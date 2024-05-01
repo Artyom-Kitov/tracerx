@@ -23,7 +23,7 @@ kotlin {
 }
 
 application {
-    mainClassName = 'MainKt'
+    mainClassName = 'ru.nsu.icg.tracerx.MainKt'
 }
 
 jar {
