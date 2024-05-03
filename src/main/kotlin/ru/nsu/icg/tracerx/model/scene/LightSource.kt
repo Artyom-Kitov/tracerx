@@ -1,9 +1,9 @@
 package ru.nsu.icg.tracerx.model.scene
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 import java.awt.Color
 
 data class LightSource(
-    val position: Point3D,
+    val position: Vector3D,
     val color: Color
 )

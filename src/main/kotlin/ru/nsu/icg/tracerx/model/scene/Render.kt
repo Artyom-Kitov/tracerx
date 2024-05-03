@@ -1,6 +1,6 @@
 package ru.nsu.icg.tracerx.model.scene
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 import java.awt.Color
 
 data class Render(
@@ -8,9 +8,9 @@ data class Render(
     val gamma: Float,
     val renderDepth: Int,
     val quality: RenderQuality,
-    val cameraPosition: Point3D,
-    val observationPosition: Point3D,
-    val up: Point3D,
+    val cameraPosition: Vector3D,
+    val observationPosition: Vector3D,
+    val up: Vector3D,
     val zNear: Float, val zFar: Float,
     val screenWidth: Float, val screenHeight: Float
 )

@@ -1,10 +1,10 @@
 package ru.nsu.icg.tracerx.model.primitive
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 
 data class Sphere(
     val radius: Float,
-    val center: Point3D,
+    val center: Vector3D,
     override val optics: Optics
 ) : Primitive3D(optics) {
 }

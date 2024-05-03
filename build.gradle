@@ -12,6 +12,7 @@ repositories {
 
 dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation 'com.formdev:flatlaf:3.3'
 }
 
 test {

@@ -1,12 +1,12 @@
 package ru.nsu.icg.tracerx.model.primitive
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 
 data class Quadrangle(
-    val a: Point3D,
-    val b: Point3D,
-    val c: Point3D,
-    val d: Point3D,
+    val a: Vector3D,
+    val b: Vector3D,
+    val c: Vector3D,
+    val d: Vector3D,
     override val optics: Optics
 ) : Primitive3D(optics) {
 }

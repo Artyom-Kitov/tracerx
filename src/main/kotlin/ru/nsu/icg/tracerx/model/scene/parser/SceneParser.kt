@@ -16,7 +16,7 @@ class SceneParser(private val reader: Reader) {
         val lightSources = readLightSources(scanner, nSources)
         val primitives = readPrimitives(scanner)
         return Scene(
-            backgroundColor = backgroundColor,
+            diffusionColor = backgroundColor,
             lightSources = lightSources,
             primitives = primitives
         )

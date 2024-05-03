@@ -4,7 +4,7 @@ import ru.nsu.icg.tracerx.model.primitive.Primitive3D
 import java.awt.Color
 
 data class Scene(
-    val backgroundColor: Color,
+    val diffusionColor: Color,
     val lightSources: List<LightSource>,
     val primitives: List<Primitive3D>
 )

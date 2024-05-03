@@ -1,11 +1,21 @@
 package ru.nsu.icg.tracerx
 
-import ru.nsu.icg.tracerx.model.scene.parser.RenderParser
-import ru.nsu.icg.tracerx.model.scene.parser.SceneParser
-import java.nio.file.Files
-import java.nio.file.Path
+import com.formdev.flatlaf.FlatDarkLaf
+import ru.nsu.icg.tracerx.controller.FileManagerController
+import ru.nsu.icg.tracerx.controller.SceneController
+import ru.nsu.icg.tracerx.model.Context
+import ru.nsu.icg.tracerx.view.SceneFrame
+import javax.swing.UIManager
 
 fun main() {
-    println(SceneParser(Files.newBufferedReader(Path.of("scene/StandfordBunny.scene"))).parse())
-    println(RenderParser(Files.newBufferedReader(Path.of("scene/StandfordBunny.render"))).parse())
+    try {
+        UIManager.setLookAndFeel(FlatDarkLaf())
+    } catch (e: ClassNotFoundException) {
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
+    }
+    val context = Context()
+    SceneFrame(
+        fileManagerController = FileManagerController(context),
+        sceneController = SceneController(context)
+    )
 }

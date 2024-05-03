@@ -1,10 +1,10 @@
 package ru.nsu.icg.tracerx.model.primitive
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 
 data class Box(
-    val min: Point3D,
-    val max: Point3D,
+    val min: Vector3D,
+    val max: Vector3D,
     override val optics: Optics
 ) : Primitive3D(optics) {
 }

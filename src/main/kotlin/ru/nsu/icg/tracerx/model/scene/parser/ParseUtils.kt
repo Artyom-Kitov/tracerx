@@ -1,6 +1,6 @@
 package ru.nsu.icg.tracerx.model.scene.parser
 
-import ru.nsu.icg.tracerx.model.common.Point3D
+import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.*
 import ru.nsu.icg.tracerx.model.scene.LightSource
 import ru.nsu.icg.tracerx.model.scene.RenderQuality
@@ -81,7 +81,7 @@ fun readLightSources(scanner: Scanner, nSources: Int): List<LightSource> {
     return result
 }
 
-fun readPoint3D(scanner: Scanner, error: String) = Point3D(
+fun readPoint3D(scanner: Scanner, error: String) = Vector3D(
     readFloat(scanner, error),
     readFloat(scanner, error),
     readFloat(scanner, error)
