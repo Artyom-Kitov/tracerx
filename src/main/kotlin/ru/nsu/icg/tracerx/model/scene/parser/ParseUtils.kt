@@ -82,9 +82,10 @@ fun readLightSources(scanner: Scanner, nSources: Int): List<LightSource> {
 }
 
 fun readPoint3D(scanner: Scanner, error: String) = Vector3D(
-    readFloat(scanner, error),
-    readFloat(scanner, error),
-    readFloat(scanner, error)
+    x = readFloat(scanner, error),
+    y = readFloat(scanner, error),
+    z = readFloat(scanner, error),
+    w = 1f
 )
 
 fun readFloat(scanner: Scanner, error: String): Float = try {
@@ -117,7 +118,6 @@ fun readColor(scanner: Scanner, error: String): Color {
     } catch (e: InputMismatchException) {
         throw SceneParseException(error)
     }
-
 }
 
 fun combineLines(lines: List<String>): String {

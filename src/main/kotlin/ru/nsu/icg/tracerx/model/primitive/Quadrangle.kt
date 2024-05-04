@@ -9,4 +9,6 @@ data class Quadrangle(
     val d: Vector3D,
     override val optics: Optics
 ) : Primitive3D(optics) {
+    override val lines: List<List<Vector3D>>
+        get() = listOf(listOf(a, b, c, d, a))
 }

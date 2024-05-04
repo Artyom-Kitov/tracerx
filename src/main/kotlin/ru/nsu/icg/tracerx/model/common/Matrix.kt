@@ -45,11 +45,12 @@ class Matrix(
     }
 
     operator fun times(vector: Vector3D): Vector3D {
-        require(n == 3) { "invalid dimensions: $n vs 3" }
-        val x = this[0, 0] * vector.x + this[0, 1] * vector.y + this[0, 2] * vector.z
-        val y = this[1, 0] * vector.x + this[1, 1] * vector.y + this[1, 2] * vector.z
-        val z = this[2, 0] * vector.x + this[2, 1] * vector.y + this[2, 2] * vector.z
-        return Vector3D(x, y, z)
+        require(n == 4) { "invalid dimensions: $n vs 3" }
+        val x = this[0, 0] * vector.x + this[0, 1] * vector.y + this[0, 2] * vector.z + this[0, 3] * vector.w
+        val y = this[1, 0] * vector.x + this[1, 1] * vector.y + this[1, 2] * vector.z + this[1, 3] * vector.w
+        val z = this[2, 0] * vector.x + this[2, 1] * vector.y + this[2, 2] * vector.z + this[2, 3] * vector.w
+        val w = this[3, 0] * vector.x + this[3, 1] * vector.y + this[3, 2] * vector.z + this[3, 3] * vector.w
+        return Vector3D(x, y, z, w)
     }
 
     operator fun times(other: Matrix) : Matrix {

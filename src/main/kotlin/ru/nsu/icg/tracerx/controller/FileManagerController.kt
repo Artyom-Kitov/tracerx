@@ -28,4 +28,6 @@ class FileManagerController(
             up = ((z * up) * z).normalized()
         )
     }
+
+    fun setContext(scene: Scene, render: Render) = context.setContextParameters(scene, render)
 }

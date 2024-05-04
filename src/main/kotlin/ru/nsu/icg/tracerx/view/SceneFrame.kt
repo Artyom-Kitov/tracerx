@@ -3,6 +3,8 @@ package ru.nsu.icg.tracerx.view
 import ru.nsu.icg.tracerx.controller.FileManagerController
 import ru.nsu.icg.tracerx.controller.SceneController
 import java.awt.Dimension
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import javax.swing.*
 import kotlin.system.exitProcess
 
@@ -16,10 +18,24 @@ class SceneFrame(
         preferredSize = DEFAULT_SIZE
 
         setupMenu()
-        add(ScenePanel(
-            scene = fileManagerController.loadDefaultScene(),
-            render = fileManagerController.loadDefaultRender()
-        ))
+        val defaultScene = fileManagerController.loadDefaultScene()
+        val defaultRender = fileManagerController.loadDefaultRender()
+        fileManagerController.setContext(defaultScene, defaultRender)
+        add(ScenePanel(sceneController))
+
+        addKeyListener(object : KeyAdapter() {
+            override fun keyPressed(e: KeyEvent?) {
+                if (e == null) return
+                val sensitivity = 0.5f
+                when (e.keyCode) {
+                    KeyEvent.VK_LEFT -> sceneController.move(0f, sensitivity, 0f)
+                    KeyEvent.VK_RIGHT -> sceneController.move(0f, -sensitivity, 0f)
+                    KeyEvent.VK_UP -> sceneController.move(0f, 0f, sensitivity)
+                    KeyEvent.VK_DOWN -> sceneController.move(0f, 0f, -sensitivity)
+                }
+                repaint()
+            }
+        })
 
         pack()
         isVisible = true
