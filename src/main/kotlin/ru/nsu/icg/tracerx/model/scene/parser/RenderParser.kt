@@ -1,5 +1,6 @@
 package ru.nsu.icg.tracerx.model.scene.parser
 
+import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.scene.Render
 import java.io.Reader
 import java.util.*
@@ -10,7 +11,7 @@ class RenderParser(private val reader: Reader) {
     fun parse(): Render {
         val sceneStr = combineLines(reader.readLines())
         val scanner = Scanner(sceneStr).useLocale(Locale.US)
-        return Render(
+        val parsed = Render(
             backgroundColor = readColor(scanner, "invalid background color"),
             gamma = readFloat(scanner, "invalid gamma value"),
             renderDepth = readInt(scanner, "invalid depth value"),
@@ -23,5 +24,13 @@ class RenderParser(private val reader: Reader) {
             screenWidth = readFloat(scanner, "invalid screen width"),
             screenHeight = readFloat(scanner, "invalid screen height")
         )
+        return parsed.copy(
+            up = canonizeUpVector(parsed.observationPosition, parsed.cameraPosition, parsed.up)
+        )
+    }
+
+    private fun canonizeUpVector(view: Vector3D, eye: Vector3D, up: Vector3D): Vector3D {
+        val z = view - eye
+        return ((z * up) * z).normalized()
     }
 }

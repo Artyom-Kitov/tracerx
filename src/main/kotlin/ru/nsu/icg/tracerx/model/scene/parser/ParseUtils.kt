@@ -59,8 +59,8 @@ fun readBox(scanner: Scanner): Primitive3D = Box(
 )
 
 fun readSphere(scanner: Scanner): Primitive3D = Sphere(
-    radius = readFloat(scanner, "invalid radius"),
     center = readPoint3D(scanner, "invalid sphere position"),
+    radius = readFloat(scanner, "invalid radius"),
     optics = readOptics(scanner, "invalid sphere optics")
 )
 

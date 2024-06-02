@@ -11,4 +11,10 @@ data class Quadrangle(
 ) : Primitive3D(optics) {
     override val lines: List<List<Vector3D>>
         get() = listOf(listOf(a, b, c, d, a))
+
+    override fun intersectionWith(ray: Ray): List<Intersection> {
+        val triangle1 = Triangle(a, b, c, optics)
+        val triangle2 = Triangle(a, c, d, optics)
+        return triangle1.intersectionWith(ray) + triangle2.intersectionWith(ray)
+    }
 }

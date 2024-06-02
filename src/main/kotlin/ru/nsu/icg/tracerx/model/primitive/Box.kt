@@ -26,4 +26,8 @@ data class Box(
 
             return result
         }
+
+    override fun intersectionWith(ray: Ray): List<Intersection> {
+        TODO("Not yet implemented")
+    }
 }

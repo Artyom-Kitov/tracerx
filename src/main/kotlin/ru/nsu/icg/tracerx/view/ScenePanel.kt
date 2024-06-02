@@ -1,11 +1,13 @@
 package ru.nsu.icg.tracerx.view
 
 import ru.nsu.icg.tracerx.controller.SceneController
+import ru.nsu.icg.tracerx.model.common.Vector3D
+import java.awt.Color
 import java.awt.Graphics
 import java.awt.Point
 import java.awt.event.*
+import java.awt.image.BufferedImage
 import javax.swing.JPanel
-import kotlin.math.sign
 
 class ScenePanel(
     private val controller: SceneController
@@ -17,6 +19,28 @@ class ScenePanel(
 
     private var origin: Point = Point(0, 0)
     private var isMousePressed = false
+
+    var drawLightSources = false
+        set(value) {
+            field = value
+            repaint()
+        }
+
+    var rendered: BufferedImage? = null
+        set(value) {
+            field = value
+            repaint()
+        }
+
+    val image: BufferedImage
+        get() {
+            val img = rendered
+            if (img != null) return img
+
+            val result = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+            paintComponent(result.createGraphics())
+            return result
+        }
 
     init {
         background = controller.backgroundColor
@@ -51,16 +75,14 @@ class ScenePanel(
             }
 
             override fun mouseReleased(e: MouseEvent?) {
-                if (e == null) return
                 isMousePressed = false
             }
         })
         addMouseMotionListener(object : MouseAdapter() {
             override fun mouseDragged(e: MouseEvent?) {
                 if (e == null) return
-                val sensitivity = 0.005f
-                controller.rotate((origin.x - e.x) * sensitivity,
-                    (origin.y - e.y) * sensitivity)
+                val sensitivity = 0.1f / scaleFactor
+                controller.rotate((origin.x - e.x) * sensitivity, (origin.y - e.y) * sensitivity)
                 origin = e.point
                 repaint()
             }
@@ -71,22 +93,46 @@ class ScenePanel(
 
     override fun paintComponent(g: Graphics?) {
         if (g == null) return
+
+        if (rendered != null) {
+            g.drawImage(rendered, 0, 0, this)
+            return
+        }
+
+        val bkg = controller.backgroundColor
+        background = bkg
         super.paintComponent(g)
 
+        g.color = Color(255 - bkg.red, 255 - bkg.green, 255 - bkg.blue)
         val lines = controller.calculateProjection()
         for (line in lines) {
             if (line.isEmpty()) continue
             var prev = line[0]
             for (i in 1..line.lastIndex) {
                 val next = line[i]
-                val x0 = (width / 2 - scaleFactor.toFloat() * prev.y).toInt()
-                val y0 = (height / 2 - scaleFactor.toFloat() * prev.z).toInt()
 
-                val x1 = (width / 2 - scaleFactor.toFloat() * next.y).toInt()
-                val y1 = (height / 2 - scaleFactor.toFloat() * next.z).toInt()
-                g.drawLine(x0, y0, x1, y1)
+                val p1 = projectionToScreen(prev)
+                val p2 = projectionToScreen(next)
+                g.drawLine(p1.x, p1.y, p2.x, p2.y)
                 prev = next
             }
         }
+
+        if (!drawLightSources) return
+        for (lightSource in controller.lightSources) {
+            g.color = lightSource.color
+            val p = projectionToScreen(lightSource.position)
+            g.fillOval(p.x - SOURCE_RADIUS, p.y - SOURCE_RADIUS, SOURCE_RADIUS * 2, SOURCE_RADIUS * 2)
+        }
+    }
+
+    private fun projectionToScreen(v: Vector3D): Point {
+        val x = (width / 2 - scaleFactor.toFloat() * v.y).toInt()
+        val y = (height / 2 - scaleFactor.toFloat() * v.z).toInt()
+        return Point(x, y)
+    }
+
+    companion object {
+        private const val SOURCE_RADIUS = 5
     }
 }

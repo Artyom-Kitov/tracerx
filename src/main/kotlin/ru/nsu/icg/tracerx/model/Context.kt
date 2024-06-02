@@ -3,10 +3,11 @@ package ru.nsu.icg.tracerx.model
 import ru.nsu.icg.tracerx.model.common.Matrix
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Primitive3D
-import ru.nsu.icg.tracerx.model.scene.LightSource
-import ru.nsu.icg.tracerx.model.scene.Render
-import ru.nsu.icg.tracerx.model.scene.Scene
+import ru.nsu.icg.tracerx.model.scene.*
 import java.awt.Color
+import java.awt.Dimension
+import java.awt.image.BufferedImage
+import javax.swing.Renderer
 import kotlin.math.*
 
 class Context {
@@ -25,8 +26,12 @@ class Context {
     private var screenDistance = 0f // zn
     private var viewDistance = 0f // zf
 
-    private var diffusionColor = Color.BLACK
-    var backgroundColor = Color.BLACK
+    private var diffusionColor: Color = Color.BLACK
+    var backgroundColor: Color = Color.BLACK
+
+    private var gamma = 1f
+
+    private val tracer = Tracer()
 
     private val lines: List<List<Vector3D>>
         get() {
@@ -35,20 +40,30 @@ class Context {
             return result
         }
 
-    fun setContextParameters(scene: Scene, render: Render) {
+    fun setScene(scene: Scene) {
+        diffusionColor = scene.diffusionColor
         lightSources.clear()
         primitives.clear()
         lightSources.addAll(scene.lightSources)
         primitives.addAll(scene.primitives)
+    }
+
+    fun setRender(render: Render) {
+        backgroundColor = render.backgroundColor
+        gamma = render.gamma
 
         cameraPosition = render.cameraPosition
         viewDirection = (render.observationPosition - render.cameraPosition).normalized()
         up = render.up
-        screenWidth = render.screenWidth
-        screenHeight = render.screenHeight
+
         screenDistance = render.zNear
         viewDistance = render.zFar
+
+        screenWidth = render.screenWidth
+        screenHeight = render.screenHeight
     }
+
+    private var lastProjectedMatrix: Matrix? = null
 
     fun calculateProjection(): List<List<Vector3D>> {
         var resultingMatrix = Matrix.of(
@@ -74,6 +89,7 @@ class Context {
             floatArrayOf(1f, 0f, 0f, 1f),
         )
         resultingMatrix = projectionMatrix * resultingMatrix
+        lastProjectedMatrix = resultingMatrix
 
         val result = mutableListOf<MutableList<Vector3D>>()
         for (line in lines) {
@@ -81,7 +97,8 @@ class Context {
             var toAdd = true
             for (vector in line) {
                 val v = resultingMatrix * vector
-                if (v.x < screenDistance) {
+                // no limit
+                if (v.x < 0) {
                     toAdd = false
                     break
                 }
@@ -91,6 +108,19 @@ class Context {
         }
         return result
     }
+
+    val projectedLightSources: List<LightSource>
+        get() {
+            val result = mutableListOf<LightSource>()
+            val projectionMatrix = lastProjectedMatrix ?: return result
+            for (lightSource in lightSources) {
+                val projection = projectionMatrix * lightSource.position
+                if (projection.x >= 0f) {
+                    result.add(LightSource(projection.scaled(), lightSource.color))
+                }
+            }
+            return result
+        }
 
     private fun rotationAroundVector(vector: Vector3D, angle: Float): Matrix {
         val c = cos(angle)
@@ -129,5 +159,64 @@ class Context {
         } else {
             screenDistance /= 1.1f
         }
+    }
+
+    fun setInitPosition() {
+        val first = primitives[0].lines[0][0]
+        var (minX, minY, minZ) = first
+        var (maxX, maxY, maxZ) = first
+        for (primitive in primitives) {
+            for (line in primitive.lines) {
+                for (point in line) {
+                    if (point.x > maxX) maxX = point.x
+                    if (point.x < minX) minX = point.x
+
+                    if (point.y > maxY) maxY = point.y
+                    if (point.y < minY) minY = point.y
+
+                    if (point.z > maxZ) maxZ = point.z
+                    if (point.z < minZ) minZ = point.z
+                }
+            }
+        }
+        var min = Vector3D(minX, minY, minZ)
+        var max = Vector3D(maxX, maxY, maxZ)
+        val center = (min + max) / 2f
+        min = center + ((min - center) * 1.05f)
+        max = center + ((max - center) * 1.05f)
+
+        val delta = (max.z - min.z) / (2f * tan(PI.toFloat() / 12))
+        val cameraPosition = Vector3D(min.x - delta, center.y, center.z)
+
+        val render = Render(
+            backgroundColor = backgroundColor,
+            gamma = gamma,
+            renderDepth = 4,
+            quality = RenderQuality.NORMAL,
+            cameraPosition = cameraPosition.copy(w = 1f),
+            observationPosition = center.copy(w = 1f),
+            up = Vector3D(0f, 0f, 1f),
+            zNear = delta / 2f,
+            zFar = (max.x - center.x) + ((max.x - min.x) / 2f),
+            screenWidth = 5f,
+            screenHeight = 5f
+        )
+        setRender(render)
+    }
+
+    fun startRender(screenDimension: Dimension, progressSetter: (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
+        tracer.progressSetter = progressSetter
+        val image = tracer.render(
+            primitives,
+            lightSources,
+            cameraPosition,
+            viewDirection,
+            screenDistance,
+            up, screenWidth,
+            screenHeight,
+            screenDimension,
+            gamma
+        )
+        onDone(image)
     }
 }
