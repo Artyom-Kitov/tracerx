@@ -19,8 +19,9 @@ class SceneFrame(
     private val fileManager = FileManager(fileManagerController)
     private val views = JComboBox<String>()
     private val renders = mutableListOf<Render>()
-    private val renderDialog = RenderDialog(this)
+    private val renderDialog = RenderDialog(this) { wireButton.doClick() }
     private val panel = ScenePanel(sceneController)
+    private val settingsDialog = SettingsFrame(this, sceneController)
 
     private var renderButton = JRadioButtonMenuItem()
     private var wireButton = JRadioButtonMenuItem()
@@ -41,6 +42,8 @@ class SceneFrame(
         views.isFocusable = false
 
         add(panel)
+
+        settingsDialog.lightSourcesShownConsumer = { panel.drawLightSources = it }
 
         addKeyListener(object : KeyAdapter() {
             override fun keyPressed(e: KeyEvent?) {
@@ -92,7 +95,7 @@ class SceneFrame(
                 views.removeAllItems()
                 renders.clear()
                 if (fullScene.second.isEmpty()) {
-                    sceneController.init()
+                    sceneController.init(panel.size)
                     panel.correctSize()
                 } else {
                     sceneController.setRender(fullScene.second[0].second)
@@ -121,7 +124,6 @@ class SceneFrame(
         wireButton.isSelected = true
         menu.add(wireButton)
         renderButton = JRadioButtonMenuItem("Render")
-        renderButton.addActionListener { render() }
         group.add(renderButton)
         menu.add(renderButton)
 
@@ -134,17 +136,23 @@ class SceneFrame(
         renderMenu.add(settings)
         menu.add(renderMenu)
 
+        loadRender.addActionListener {
+            val render = fileManager.openRender()
+            if (render != null) sceneController.setRender(render)
+            repaint()
+        }
+        saveRender.addActionListener { fileManager.saveRender(sceneController.buildRender()) }
+        settings.addActionListener { settingsDialog.isVisible = true }
+
         val init = JMenuItem("Init")
         init.addActionListener {
-            sceneController.init()
+            sceneController.init(panel.size)
+            panel.correctSize()
             repaint()
         }
         menu.add(init)
 
-        val drawSources = JCheckBox("Draw light sources")
-        drawSources.isFocusable = false
-        drawSources.addActionListener { panel.drawLightSources = drawSources.isSelected }
-        menu.add(drawSources)
+        renderButton.addActionListener { render() }
 
         val exit = JMenuItem("Exit")
         exit.addActionListener { exitProcess(0) }

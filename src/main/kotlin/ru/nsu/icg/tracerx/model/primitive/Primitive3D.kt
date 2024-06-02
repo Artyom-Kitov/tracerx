@@ -9,5 +9,5 @@ abstract class Primitive3D(
 
     abstract fun intersectionWith(ray: Ray): List<Intersection>
 
-    protected val eps = 0.001f
+    protected val eps = 0.0001f
 }

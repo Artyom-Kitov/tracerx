@@ -1,14 +1,25 @@
-package ru.nsu.icg.tracerx.model.scene
+package ru.nsu.icg.tracerx.model
 
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Intersection
 import ru.nsu.icg.tracerx.model.primitive.Primitive3D
 import ru.nsu.icg.tracerx.model.primitive.Ray
+import ru.nsu.icg.tracerx.model.scene.LightSource
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.image.BufferedImage
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.pow
 import kotlin.math.sqrt
+
+private data class Batch(
+    val xFrom: Int,
+    val yFrom: Int,
+    val xTo: Int,
+    val yTo: Int
+)
 
 data class Tracer(
     val primitives: List<Primitive3D>,
@@ -31,33 +42,79 @@ data class Tracer(
     private val screenCenter = cameraPosition + viewDirection * screenDistance
     private val upperLeft = screenCenter + (up * (screenHeight / 2f)) - (rightDirection * (screenWidth / 2))
 
-    fun render(): BufferedImage? {
+    private val dx = screenWidth / screenDimension.width
+    private val dy = screenHeight / screenDimension.height
+
+    private val totalRendered = AtomicInteger(0)
+    private val prevProgress = AtomicInteger(0)
+    private val isInterrupted = AtomicBoolean(false)
+
+    fun render(isParallel: Boolean): BufferedImage? {
+        val batches = mutableListOf<Batch>()
+        if (isParallel) {
+            val di = screenDimension.width / THREAD_GRID_SIZE.first
+            val dj = screenDimension.height / THREAD_GRID_SIZE.second
+            for (i in 0..<THREAD_GRID_SIZE.first) {
+                for (j in 0..<THREAD_GRID_SIZE.second) {
+                    var xTo = di * i + di
+                    var yTo = dj * j + dj
+                    if (i == THREAD_GRID_SIZE.first - 1 && j == THREAD_GRID_SIZE.second - 1) {
+                        xTo += screenDimension.width % THREAD_GRID_SIZE.first
+                        yTo += screenDimension.height % THREAD_GRID_SIZE.second
+                    }
+                    batches.add(Batch(
+                        di * i, dj * j,
+                        xTo, yTo
+                    ))
+                }
+            }
+        } else {
+            batches.add(Batch(0, 0, screenDimension.width, screenDimension.height))
+        }
+
+        totalRendered.set(0)
         val result = BufferedImage(screenDimension.width, screenDimension.height, BufferedImage.TYPE_INT_RGB)
+        val threads = mutableListOf<Thread>()
+        for (i in 1..batches.lastIndex) {
+            val thread = Thread { renderBatch(batches[i], result) }
+            threads.add(thread)
+            thread.start()
+        }
+        renderBatch(batches[0], result)
+        for (thread in threads) {
+            try {
+                thread.join()
+            } catch (ignore: InterruptedException) {
+                // nothing to do
+            }
+        }
+        progressSetter(0)
+        return if (isInterrupted.get()) null else result
+    }
 
-        val dx = screenWidth / screenDimension.width
-        val dy = screenHeight / screenDimension.height
-
+    private fun renderBatch(batch: Batch, result: BufferedImage) {
         val pixels = screenDimension.width * screenDimension.height
-        var totalRendered = 0
-        var prevPercent = 0
-        for (y in 0..<screenDimension.height) {
-            for (x in 0..<screenDimension.width) {
-                if (Thread.currentThread().isInterrupted) return null
+        for (y in batch.yFrom..<batch.yTo) {
+            for (x in batch.xFrom..<batch.xTo) {
+                if (Thread.currentThread().isInterrupted) {
+                    isInterrupted.set(true)
+                    return
+                }
 
-                val ray = rayAt(x, y, dx, dy)
+                val ray = rayAt(x, y)
+                val pixel = trace(ray)
+                synchronized(result) {
+                    result.setRGB(x, y, pixel)
+                }
 
-                result.setRGB(x, y, trace(ray))
-
-                totalRendered++
-                val progress = (totalRendered.toFloat() / pixels * 100f).toInt()
-                if (prevPercent != progress) {
-                    prevPercent = progress
+                val total = totalRendered.incrementAndGet()
+                val progress = (total.toFloat() / pixels * 100f).toInt()
+                if (progress > prevProgress.get()) {
                     progressSetter(progress)
+                    prevProgress.set(progress)
                 }
             }
         }
-
-        return result
     }
 
     private fun trace(ray: Ray): Int {
@@ -94,9 +151,10 @@ data class Tracer(
             prevB = bI
         }
 
-        val red = (prevR * 255f).toInt()
-        val green = (prevG * 255f).toInt()
-        val blue = (prevB * 255f).toInt()
+        val gammaReversed = 1f / gamma
+        val red = (prevR.pow(gammaReversed) * 255f).toInt()
+        val green = (prevG.pow(gammaReversed) * 255f).toInt()
+        val blue = (prevB.pow(gammaReversed) * 255f).toInt()
 
         return (red shl 16) or (green shl 8) or blue
     }
@@ -159,7 +217,7 @@ data class Tracer(
         findIntersections(reflected, result, currentDepth - 1)
     }
 
-    private fun rayAt(x: Int, y: Int, dx: Float, dy: Float): Ray {
+    private fun rayAt(x: Int, y: Int): Ray {
         val direction = ((upperLeft + down * (y * dy) + rightDirection * (x * dx)) - cameraPosition).normalized()
         return Ray(cameraPosition, direction)
     }
@@ -186,5 +244,9 @@ data class Tracer(
             }
         }
         return result
+    }
+
+    companion object {
+        private val THREAD_GRID_SIZE = 2 to 2
     }
 }

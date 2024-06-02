@@ -14,8 +14,11 @@ class SceneController(
 ) {
     var screenWidth by context::screenWidth
     var screenHeight by context::screenHeight
-    val backgroundColor: Color by context::backgroundColor
+    var backgroundColor by context::backgroundColor
     val lightSources: List<LightSource> by context::projectedLightSources
+    var gamma by context::gamma
+    var depth by context::depth
+    var parallel by context::isParallel
 
     fun setScene(scene: Scene) = context.setScene(scene)
     fun setRender(render: Render) = context.setRender(render)
@@ -28,9 +31,11 @@ class SceneController(
 
     fun rotate(aroundVertical: Float, aroundHorizontal: Float) = context.rotate(aroundVertical, aroundHorizontal)
 
-    fun init() = context.setInitPosition()
+    fun init(screenDimension: Dimension) = context.setInitPosition(screenDimension)
 
     fun startRender(screenDimension: Dimension, progressSetter: (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
         context.startRender(screenDimension, progressSetter, onDone)
     }
+
+    fun buildRender() = context.buildRender()
 }

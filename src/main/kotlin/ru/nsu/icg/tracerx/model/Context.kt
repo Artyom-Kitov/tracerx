@@ -3,12 +3,10 @@ package ru.nsu.icg.tracerx.model
 import ru.nsu.icg.tracerx.model.common.Matrix
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Primitive3D
-import ru.nsu.icg.tracerx.model.primitive.Ray
 import ru.nsu.icg.tracerx.model.scene.*
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-import javax.swing.Renderer
 import kotlin.math.*
 
 class Context {
@@ -30,8 +28,9 @@ class Context {
     private var diffusionColor: Color = Color.BLACK
     var backgroundColor: Color = Color.BLACK
 
-    private var depth = 4
-    private var gamma = 1f
+    var depth = 4
+    var gamma = 1f
+    var isParallel = false
 
     private val lines: List<List<Vector3D>>
         get() {
@@ -162,7 +161,7 @@ class Context {
         }
     }
 
-    fun setInitPosition() {
+    fun setInitPosition(screenDimension: Dimension) {
         val first = primitives[0].lines[0][0]
         var (minX, minY, minZ) = first
         var (maxX, maxY, maxZ) = first
@@ -221,7 +220,23 @@ class Context {
             diffusionColor
         )
         tracer.progressSetter = progressSetter
-        val image = tracer.render()
+        val image = tracer.render(isParallel)
         if (image != null) onDone(image)
+    }
+
+    fun buildRender(): Render {
+        return Render(
+            backgroundColor = backgroundColor,
+            gamma = gamma,
+            renderDepth = depth,
+            quality = RenderQuality.NORMAL,
+            cameraPosition = cameraPosition,
+            observationPosition = (cameraPosition + viewDirection * screenDistance),
+            up = up,
+            zNear = screenDistance,
+            zFar = viewDistance,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight
+        )
     }
 }

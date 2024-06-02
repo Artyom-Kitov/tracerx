@@ -1,18 +1,12 @@
 package ru.nsu.icg.tracerx.controller
 
-import ru.nsu.icg.tracerx.model.Context
-import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.scene.Render
 import ru.nsu.icg.tracerx.model.scene.Scene
 import ru.nsu.icg.tracerx.model.scene.parser.RenderParser
-import ru.nsu.icg.tracerx.model.scene.parser.SceneParseException
 import ru.nsu.icg.tracerx.model.scene.parser.SceneParser
-import java.awt.Color
 import java.io.File
 
-class FileManagerController(
-    private val context: Context
-) {
+class FileManagerController {
     fun loadDefaultScene(): Scene {
         val stream = object {}.javaClass.getResourceAsStream("/scene/StandfordBunny.scene")
             ?: throw IllegalStateException("unable to access default scene")
@@ -39,5 +33,9 @@ class FileManagerController(
             }
         }
         return scene to renders
+    }
+
+    fun loadRender(file: File): Render {
+        return RenderParser(file.reader()).parse()
     }
 }

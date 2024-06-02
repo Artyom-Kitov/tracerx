@@ -17,7 +17,7 @@ fun main() {
     val context = Context()
     SwingUtilities.invokeLater {
         SceneFrame(
-            fileManagerController = FileManagerController(context),
+            fileManagerController = FileManagerController(),
             sceneController = SceneController(context)
         )
     }

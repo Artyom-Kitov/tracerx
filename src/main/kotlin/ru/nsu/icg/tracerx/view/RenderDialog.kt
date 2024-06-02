@@ -9,7 +9,10 @@ import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JProgressBar
 
-class RenderDialog(frame: JFrame) : JDialog(frame, "Render Progress", false) {
+class RenderDialog(
+    frame: JFrame,
+    onClose: () -> Unit
+) : JDialog(frame, "Render Progress", false) {
 
     private val progressBar = JProgressBar(0, 100)
     val progressSetter: (Int) -> Unit = {
@@ -36,6 +39,7 @@ class RenderDialog(frame: JFrame) : JDialog(frame, "Render Progress", false) {
                 thread?.interrupt()
                 frame.isEnabled = true
                 frame.isVisible = true
+                onClose()
             }
         })
 
