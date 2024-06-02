@@ -2,6 +2,8 @@ package ru.nsu.icg.tracerx.view
 
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import javax.swing.JDialog
 import javax.swing.JFrame
 import javax.swing.JLabel
@@ -17,8 +19,10 @@ class RenderDialog(frame: JFrame) : JDialog(frame, "Render Progress", false) {
     }
     private val progressLabel = JLabel("0%")
 
+    private var thread: Thread? = null
+
     init {
-        defaultCloseOperation = DO_NOTHING_ON_CLOSE
+        defaultCloseOperation = DISPOSE_ON_CLOSE
         size = Dimension(400, 200)
         preferredSize = Dimension(400, 200)
         setLocationRelativeTo(null)
@@ -27,6 +31,14 @@ class RenderDialog(frame: JFrame) : JDialog(frame, "Render Progress", false) {
         add(progressBar, BorderLayout.CENTER)
         add(progressLabel, BorderLayout.SOUTH)
 
+        addWindowListener(object : WindowAdapter() {
+            override fun windowClosing(e: WindowEvent?) {
+                thread?.interrupt()
+                frame.isEnabled = true
+                frame.isVisible = true
+            }
+        })
+
         isResizable = false
         pack()
     }
@@ -34,6 +46,7 @@ class RenderDialog(frame: JFrame) : JDialog(frame, "Render Progress", false) {
     fun startRender(action: () -> Unit) {
         progressBar.value = 0
         isVisible = true
-        Thread(action).start()
+        thread = Thread(action)
+        thread?.start()
     }
 }

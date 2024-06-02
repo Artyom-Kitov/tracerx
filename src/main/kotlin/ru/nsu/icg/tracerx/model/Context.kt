@@ -3,6 +3,7 @@ package ru.nsu.icg.tracerx.model
 import ru.nsu.icg.tracerx.model.common.Matrix
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Primitive3D
+import ru.nsu.icg.tracerx.model.primitive.Ray
 import ru.nsu.icg.tracerx.model.scene.*
 import java.awt.Color
 import java.awt.Dimension
@@ -29,9 +30,8 @@ class Context {
     private var diffusionColor: Color = Color.BLACK
     var backgroundColor: Color = Color.BLACK
 
+    private var depth = 4
     private var gamma = 1f
-
-    private val tracer = Tracer()
 
     private val lines: List<List<Vector3D>>
         get() {
@@ -51,6 +51,7 @@ class Context {
     fun setRender(render: Render) {
         backgroundColor = render.backgroundColor
         gamma = render.gamma
+        depth = render.renderDepth
 
         cameraPosition = render.cameraPosition
         viewDirection = (render.observationPosition - render.cameraPosition).normalized()
@@ -91,7 +92,7 @@ class Context {
         resultingMatrix = projectionMatrix * resultingMatrix
         lastProjectedMatrix = resultingMatrix
 
-        val result = mutableListOf<MutableList<Vector3D>>()
+        val result = mutableListOf<List<Vector3D>>()
         for (line in lines) {
             val projected = mutableListOf<Vector3D>()
             var toAdd = true
@@ -205,18 +206,22 @@ class Context {
     }
 
     fun startRender(screenDimension: Dimension, progressSetter: (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
-        tracer.progressSetter = progressSetter
-        val image = tracer.render(
+        val tracer = Tracer(
             primitives,
             lightSources,
+            depth,
             cameraPosition,
             viewDirection,
             screenDistance,
             up, screenWidth,
             screenHeight,
             screenDimension,
-            gamma
+            gamma,
+            backgroundColor,
+            diffusionColor
         )
-        onDone(image)
+        tracer.progressSetter = progressSetter
+        val image = tracer.render()
+        if (image != null) onDone(image)
     }
 }

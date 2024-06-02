@@ -25,10 +25,10 @@ data class Vector3D(
 
     infix fun scalarTimes(other: Vector3D) = x * other.x + y * other.y + z * other.z
 
-    fun norm2() = sqrt(x * x + y * y + z * z)
+    val norm2 get() = sqrt(x * x + y * y + z * z)
 
     fun normalized(): Vector3D {
-        val norm = norm2()
+        val norm = norm2
         return Vector3D(
             x = x / norm,
             y = y / norm,

@@ -13,23 +13,51 @@ data class Triangle(
         get() = listOf(listOf(a, b, c, a))
 
     override fun intersectionWith(ray: Ray): List<Intersection> {
-        val normal = ((b - a) * (c - a)).normalized()
+//        val normal = ((b - a) * (c - a)).normalized()
+//
+//        val divisor = normal scalarTimes ray.direction
+//        if (abs(divisor) < eps) return listOf()
+//
+//        val delta = normal scalarTimes (a - ray.start) / divisor
+//        if (delta < 0f) return listOf()
+//
+//        val intersection = ray.start + ray.direction * delta
+//
+//        val totalArea = triangleArea(a, b, c)
+//        val p1 = triangleArea(a, b, intersection)
+//        val p2 = triangleArea(b, c, intersection)
+//        val p3 = triangleArea(a, c, intersection)
+//        if (abs(p1 + p2 + p3 - totalArea) > eps) {
+//            return listOf()
+//        }
+//        return listOf(Intersection(this, intersection, normal))
+        val edge1 = b - a
+        val edge2 = c - a
 
-        val divisor = normal scalarTimes ray.direction
-        if (abs(divisor) < eps) return listOf()
+        val normal = (edge1 * edge2).normalized()
 
-        val delta = normal scalarTimes (a - ray.start) / divisor
-        if (delta < 0f) return listOf()
+        val h = ray.direction * edge2
+        val aDivisor = edge1 scalarTimes h
 
-        val intersection = ray.start + ray.direction * delta
+        if (abs(aDivisor) < eps) return listOf() // Луч параллелен плоскости треугольника
 
-        val totalArea = triangleArea(a, b, c)
-        val p1 = triangleArea(a, b, intersection) / totalArea
-        val p2 = triangleArea(b, c, intersection) / totalArea
-        val p3 = triangleArea(a, c, intersection) / totalArea
-        if (abs(p1 + p2 + p3 - 1f) > eps) {
-            return listOf()
+        val f = 1.0f / aDivisor
+        val s = ray.start - a
+        val u = f * (s scalarTimes (h))
+
+        if (u < 0.0 || u > 1.0) return listOf() // Точка пересечения вне треугольника
+
+        val q = s * edge1
+        val v = f * (ray.direction scalarTimes q)
+
+        if (v < 0.0 || u + v > 1.0) return listOf() // Точка пересечения вне треугольника
+
+        val t = f * (edge2 scalarTimes q)
+        return if (t > eps) {
+            val intersection = ray.start + ray.direction * t
+            listOf(Intersection(this, intersection, normal))
+        } else {
+            listOf() // Пересечение за пределами треугольника или луч указывает в обратную сторону
         }
-        return listOf(Intersection(this, intersection, normal))
     }
 }

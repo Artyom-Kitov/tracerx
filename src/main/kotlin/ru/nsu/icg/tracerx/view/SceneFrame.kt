@@ -22,6 +22,9 @@ class SceneFrame(
     private val renderDialog = RenderDialog(this)
     private val panel = ScenePanel(sceneController)
 
+    private var renderButton = JRadioButtonMenuItem()
+    private var wireButton = JRadioButtonMenuItem()
+
     init {
         minimumSize = MINIMUM_SIZE
         defaultCloseOperation = EXIT_ON_CLOSE
@@ -50,6 +53,8 @@ class SceneFrame(
                     KeyEvent.VK_DOWN, KeyEvent.VK_N -> sceneController.move(0f, 0f, -sensitivity)
                     KeyEvent.VK_W -> sceneController.move(sensitivity, 0f, 0f)
                     KeyEvent.VK_S -> sceneController.move(-sensitivity, 0f, 0f)
+                    KeyEvent.VK_ENTER -> renderButton.doClick()
+                    KeyEvent.VK_BACK_SPACE -> wireButton.doClick()
                 }
                 repaint()
             }
@@ -88,6 +93,7 @@ class SceneFrame(
                 renders.clear()
                 if (fullScene.second.isEmpty()) {
                     sceneController.init()
+                    panel.correctSize()
                 } else {
                     sceneController.setRender(fullScene.second[0].second)
                     fullScene.second.forEach {
@@ -97,6 +103,7 @@ class SceneFrame(
                     views.selectedIndex = 0
                 }
             }
+            panel.correctSize()
             repaint()
         }
         menu.add(open)
@@ -105,18 +112,18 @@ class SceneFrame(
         menu.add(views)
 
         val group = ButtonGroup()
-        val wire = JRadioButtonMenuItem("Wire")
-        wire.addActionListener {
+        wireButton = JRadioButtonMenuItem("Wire")
+        wireButton.addActionListener {
             panel.rendered = null
             repaint()
         }
-        group.add(wire)
-        wire.isSelected = true
-        menu.add(wire)
-        val render = JRadioButtonMenuItem("Render")
-        render.addActionListener { render() }
-        group.add(render)
-        menu.add(render)
+        group.add(wireButton)
+        wireButton.isSelected = true
+        menu.add(wireButton)
+        renderButton = JRadioButtonMenuItem("Render")
+        renderButton.addActionListener { render() }
+        group.add(renderButton)
+        menu.add(renderButton)
 
         val renderMenu = JMenu("Render settings")
         val loadRender = JMenuItem("Load settings")

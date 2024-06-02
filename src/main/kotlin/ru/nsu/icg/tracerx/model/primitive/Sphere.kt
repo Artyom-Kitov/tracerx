@@ -29,8 +29,8 @@ data class Sphere(
                         y = radius * sin(dPhi * j) * sin(dPhi * i),
                         z = radius * cos(dPhi * j)
                     )
-                    line1.add(point1)
-                    line2.add(point2)
+                    line1.add(center + point1)
+                    line2.add(center + point2)
                 }
                 line1.add(line1[0])
                 line2.add(line2[0])
@@ -52,25 +52,14 @@ data class Sphere(
         val discriminant = b * b - 4 * a * c
         if (discriminant < 0) return listOf()
 
-        val result: MutableList<Intersection> = mutableListOf()
+        val sqrtDiscriminant = sqrt(discriminant)
 
-        val t1 = (-b + sqrt(discriminant)) / (2f * a)
-        if (t1 >= 0) {
-            val point = ray.start + ray.direction * t1
-            val normal = (point - center).normalized()
-            point.w = 1f
-            normal.w = 1f
-            result.add(Intersection(this, point, normal))
-        }
-        val t2 = (-b - sqrt(discriminant)) / (2f * a)
-        if (t2 >= 0 && t2 != t1) {
-            val point = ray.start + ray.direction * t2
-            val normal = (point - center).normalized()
-            point.w = 1f
-            normal.w = 1f
-            result.add(Intersection(this, point, normal))
-        }
-        return result
+        val nearest = (-b - sqrtDiscriminant) / (2f * a)
+        if (nearest < -eps) return listOf()
+
+        val point = ray.start + ray.direction * nearest
+        val normal = (point - center).normalized()
+        return listOf(Intersection(this, point, normal))
     }
 
     companion object {

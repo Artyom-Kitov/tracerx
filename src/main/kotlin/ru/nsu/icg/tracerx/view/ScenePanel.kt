@@ -3,11 +3,14 @@ package ru.nsu.icg.tracerx.view
 import ru.nsu.icg.tracerx.controller.SceneController
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Point
 import java.awt.event.*
 import java.awt.image.BufferedImage
+import javax.swing.JFrame
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 
 class ScenePanel(
     private val controller: SceneController
@@ -28,6 +31,8 @@ class ScenePanel(
 
     var rendered: BufferedImage? = null
         set(value) {
+            val frame = SwingUtilities.getWindowAncestor(this) as JFrame
+            frame.isResizable = value == null
             field = value
             repaint()
         }
@@ -47,11 +52,7 @@ class ScenePanel(
         layout = null
         addComponentListener(object : ComponentAdapter() {
             override fun componentResized(e: ComponentEvent?) {
-                if (screenWidth / screenHeight != width.toFloat() / height) {
-                    scaleFactor = (height.toFloat() / screenHeight).toInt()
-                    screenWidth = width.toFloat() / scaleFactor
-                    repaint()
-                }
+                correctSize()
             }
         })
         addMouseWheelListener(object : MouseAdapter() {
@@ -89,6 +90,14 @@ class ScenePanel(
         })
 
         isDoubleBuffered = true
+    }
+
+    fun correctSize() {
+        if (screenWidth / screenHeight != width.toFloat() / height.toFloat()) {
+            scaleFactor = (height.toFloat() / screenHeight).toInt()
+            screenWidth = width.toFloat() / scaleFactor
+            repaint()
+        }
     }
 
     override fun paintComponent(g: Graphics?) {

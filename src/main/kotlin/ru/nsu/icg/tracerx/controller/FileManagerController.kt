@@ -34,7 +34,7 @@ class FileManagerController(
         if (children != null) {
             for (child in children) {
                 if (child.extension.lowercase() == "render") {
-                    renders.add(child.name to RenderParser(child.reader()).parse())
+                    renders.add(child.nameWithoutExtension to RenderParser(child.reader()).parse())
                 }
             }
         }
