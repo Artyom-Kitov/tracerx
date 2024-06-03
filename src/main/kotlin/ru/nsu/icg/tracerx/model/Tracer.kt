@@ -11,6 +11,8 @@ import java.awt.image.BufferedImage
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -58,8 +60,10 @@ data class Tracer(
                 for (j in 0..<THREAD_GRID_SIZE.second) {
                     var xTo = di * i + di
                     var yTo = dj * j + dj
-                    if (i == THREAD_GRID_SIZE.first - 1 && j == THREAD_GRID_SIZE.second - 1) {
+                    if (i == THREAD_GRID_SIZE.first - 1) {
                         xTo += screenDimension.width % THREAD_GRID_SIZE.first
+                    }
+                    if (j == THREAD_GRID_SIZE.second - 1) {
                         yTo += screenDimension.height % THREAD_GRID_SIZE.second
                     }
                     batches.add(Batch(
@@ -152,9 +156,9 @@ data class Tracer(
         }
 
         val gammaReversed = 1f / gamma
-        val red = (prevR.pow(gammaReversed) * 255f).toInt()
-        val green = (prevG.pow(gammaReversed) * 255f).toInt()
-        val blue = (prevB.pow(gammaReversed) * 255f).toInt()
+        val red = max(0, min(255, (prevR.pow(gammaReversed) * 255f).toInt()))
+        val green = max(0, min(255, (prevG.pow(gammaReversed) * 255f).toInt()))
+        val blue = max(0, min(255, (prevB.pow(gammaReversed) * 255f).toInt()))
 
         return (red shl 16) or (green shl 8) or blue
     }
@@ -202,7 +206,7 @@ data class Tracer(
         val direction = (source.position - point).normalized()
         val ray = Ray(point, direction)
         for (primitive in primitives) {
-            if (primitive.intersectionWith(ray).isNotEmpty()) {
+            if (primitive.intersects(ray)) {
                 return null
             }
         }

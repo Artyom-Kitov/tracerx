@@ -7,6 +7,8 @@ abstract class Primitive3D(
 ) {
     abstract val lines: List<List<Vector3D>>
 
+    abstract fun intersects(ray: Ray): Boolean
+
     abstract fun intersectionWith(ray: Ray): List<Intersection>
 
     protected val eps = 0.0001f

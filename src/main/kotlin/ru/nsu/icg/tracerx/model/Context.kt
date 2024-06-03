@@ -30,7 +30,7 @@ class Context {
 
     var depth = 4
     var gamma = 1f
-    var isParallel = false
+    var isParallel = true
 
     private val lines: List<List<Vector3D>>
         get() {

@@ -40,6 +40,24 @@ data class Sphere(
             return result
         }
 
+    override fun intersects(ray: Ray): Boolean {
+        val (dx, dy, dz) = ray.direction
+        val (p0x, p0y, p0z) = ray.start
+        val (cx, cy, cz) = center
+
+        val a = dx * dx + dy * dy + dz * dz
+        val b = 2f * (dx * (p0x - cx) + dy * (p0y - cy) + dz * (p0z - cz))
+        val c = (p0x - cx) * (p0x - cx) + (p0y - cy) * (p0y - cy) + (p0z - cz) * (p0z - cz) - radius * radius
+
+        val discriminant = b * b - 4 * a * c
+        if (discriminant < 0) return false
+
+        val sqrtDiscriminant = sqrt(discriminant)
+
+        val nearest = (-b - sqrtDiscriminant) / (2f * a)
+        return nearest >= -eps
+    }
+
     override fun intersectionWith(ray: Ray): List<Intersection> {
         val (dx, dy, dz) = ray.direction
         val (p0x, p0y, p0z) = ray.start

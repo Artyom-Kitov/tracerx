@@ -75,7 +75,6 @@ class SettingsFrame(
         add(buttonPanel, BorderLayout.SOUTH)
 
         pack()
-        isResizable = false
     }
 
     companion object {
