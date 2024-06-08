@@ -6,6 +6,7 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
+import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JDialog
 import javax.swing.JFrame
 import javax.swing.JLabel
@@ -17,13 +18,17 @@ class RenderDialog(
 ) : JDialog(frame, "Render Progress", true) {
 
     private val progressBar = JProgressBar(0, 100)
-    suspend fun progressSetter(value: Int) {
+    private val progressLabel = JLabel("0%")
+    private var startedAt = AtomicLong(0L)
+
+    suspend fun setProgress(value: Int) {
         withContext(Dispatchers.Swing) {
-            progressLabel.text = "$value%"
+            val elapsedSeconds = (System.currentTimeMillis() - startedAt.get()).toFloat() / 1000f
+            progressLabel.text = "Progress: $value%, time elapsed: " +
+                    "${"%.2f".format(elapsedSeconds)}s"
             progressBar.value = value
         }
     }
-    private val progressLabel = JLabel("0%")
 
     private var job: Job? = null
 
@@ -52,6 +57,7 @@ class RenderDialog(
     }
 
     fun startRender(action: suspend () -> Unit) {
+        startedAt.set(System.currentTimeMillis())
         job = CoroutineScope(Dispatchers.Swing).launch {
             progressBar.value = 0
             parent.isEnabled = false

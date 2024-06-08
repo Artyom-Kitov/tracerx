@@ -11,6 +11,7 @@ class SettingsFrame(
     frame: JFrame,
     private val sceneController: SceneController
 ) : JDialog(frame, "Settings", true) {
+    private val rendererPopupList = RendererPopupList()
     private val colorSetter = JPanel()
     private val colorPanel = JPanel()
     private val picker = ColorPickerDialog(this)
@@ -38,6 +39,8 @@ class SettingsFrame(
         picker.onChoose = { colorPanel.background = it }
         sourceShownSetter.isSelected = true
 
+        add(JLabel("Model"))
+        add(rendererPopupList)
         add(colorSetter)
         add(gammaSetter)
         add(depthSetter)
@@ -50,6 +53,7 @@ class SettingsFrame(
                 gammaSetter.parameterValue = sceneController.gamma
                 depthSetter.parameterValue = sceneController.depth.toFloat()
                 nThreadsSetter.parameterValue = sceneController.nThreads.toFloat()
+                rendererPopupList.selectedItem = sceneController.rendererSupplier.first
             }
         })
         val saveButton = JButton("Save")
@@ -61,6 +65,7 @@ class SettingsFrame(
             sceneController.depth = depthSetter.parameterValue.toInt()
             sceneController.nThreads = nThreadsSetter.parameterValue.toInt()
             lightSourcesShownConsumer(sourceShownSetter.isSelected)
+            sceneController.rendererSupplier = rendererPopupList.selectedItem!!.toString() to rendererPopupList.supplier
 
             isVisible = false
             parent.repaint()
@@ -68,7 +73,7 @@ class SettingsFrame(
         cancelButton.addActionListener { isVisible = false }
 
         val buttonPanel = JPanel()
-        buttonPanel.preferredSize = Dimension(DEFAULT_SIZE.width, 50)
+        buttonPanel.preferredSize = Dimension(DEFAULT_SIZE.width, 80)
         buttonPanel.add(saveButton)
         buttonPanel.add(cancelButton)
         add(buttonPanel, BorderLayout.SOUTH)
@@ -77,6 +82,6 @@ class SettingsFrame(
     }
 
     companion object {
-        private val DEFAULT_SIZE = Dimension(480, 280)
+        private val DEFAULT_SIZE = Dimension(480, 350)
     }
 }

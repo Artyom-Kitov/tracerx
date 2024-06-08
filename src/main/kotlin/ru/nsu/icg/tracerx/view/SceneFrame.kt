@@ -163,7 +163,7 @@ class SceneFrame(
 
     private fun render() {
         renderDialog.startRender {
-            sceneController.startRender(panel.size, renderDialog::progressSetter) {
+            sceneController.startRender(panel.size, renderDialog::setProgress) {
                 panel.rendered = it
             }
         }

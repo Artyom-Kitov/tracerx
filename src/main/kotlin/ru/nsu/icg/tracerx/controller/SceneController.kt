@@ -18,6 +18,7 @@ class SceneController(
     var gamma by context::gamma
     var depth by context::depth
     var nThreads by context::nThreads
+    var rendererSupplier by context::rendererSupplier
 
     fun setScene(scene: Scene) = context.setScene(scene)
     fun setRender(render: Render) = context.setRender(render)

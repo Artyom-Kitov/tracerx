@@ -34,6 +34,9 @@ class Context {
     var gamma = 1f
     var nThreads = Runtime.getRuntime().availableProcessors()
 
+    var rendererSupplier: Pair<String, (Scene, Render, Dimension, Int) -> Renderer> =
+        "Global illumination" to ::GlobalIlluminationRenderer
+
     private val lines: List<List<Vector3D>>
         get() {
             val result = mutableListOf<List<Vector3D>>()
@@ -231,12 +234,7 @@ class Context {
     }
 
     suspend fun startRender(screenDimension: Dimension, progressSetter: suspend (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
-        val renderer: Renderer = GlobalIlluminationRenderer(
-            buildScene(),
-            buildRender(),
-            screenDimension,
-            nThreads
-        )
+        val renderer: Renderer = rendererSupplier.second(buildScene(), buildRender(), screenDimension, nThreads)
         renderer.progressSetter = progressSetter
         val image = renderer.render()
         onDone(image)

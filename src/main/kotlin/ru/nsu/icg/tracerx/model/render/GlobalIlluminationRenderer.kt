@@ -1,6 +1,5 @@
 package ru.nsu.icg.tracerx.model.render
 
-import kotlinx.coroutines.*
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Intersection
 import ru.nsu.icg.tracerx.model.primitive.Ray
@@ -8,7 +7,6 @@ import ru.nsu.icg.tracerx.model.scene.LightSource
 import ru.nsu.icg.tracerx.model.scene.Render
 import ru.nsu.icg.tracerx.model.scene.Scene
 import java.awt.Dimension
-import java.awt.image.BufferedImage
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -21,57 +19,35 @@ class GlobalIlluminationRenderer(
     nThreads: Int
 ) : Renderer(scene, render, screenDimension, nThreads) {
 
-    override suspend fun renderBatch(batch: Batch, result: BufferedImage) = coroutineScope {
-        val pixels = screenDimension.width * screenDimension.height
-        for (y in batch.yFrom..<batch.yTo) {
-            for (x in batch.xFrom..<batch.xTo) {
-                yield()
+    override fun trace(ray: Ray): Int {
+        val reflections = mutableListOf<Intersection>()
+        findReflections(ray, reflections, depth)
+        if (reflections.isEmpty()) return backgroundColor.rgb
 
-                val ray = rayAt(x, y)
-                val pixel = trace(ray)
-                synchronized(result) {
-                    result.setRGB(x, y, pixel)
-                }
-
-                val total = totalRendered.incrementAndGet()
-                val progress = (total.toFloat() / pixels * 100f).toInt()
-                if (progress > prevProgress.get()) {
-                    progressSetter(progress)
-                    prevProgress.set(progress)
-                }
-            }
-        }
-    }
-
-    private fun trace(ray: Ray): Int {
-        val intersections = mutableListOf<Intersection>()
-        findReflections(ray, intersections, depth)
-        if (intersections.isEmpty()) return backgroundColor.rgb
-
-        var prevPoint = intersections.last().point
+        var prevPoint = reflections.last().point
         var prevR = diffusionColor.red.toFloat() / 255f
         var prevG = diffusionColor.green.toFloat() / 255f
         var prevB = diffusionColor.blue.toFloat() / 255f
-        for (i in intersections.size - 1 downTo 0) {
-            val optics = intersections[i].primitive.optics
+        for (i in reflections.size - 1 downTo 0) {
+            val optics = reflections[i].primitive.optics
 
-            val v = if (i != 0) (intersections[i - 1].point - intersections[i].point).normalized()
-                else (cameraPosition - intersections[0].point).normalized()
+            val v = if (i != 0) (reflections[i - 1].point - reflections[i].point).normalized()
+                else (cameraPosition - reflections[0].point).normalized()
 
-            var (rI, gI, bI) = findSourcesIntensities(v, intersections[i])
+            var (rI, gI, bI) = findSourcesIntensities(v, reflections[i])
 
-            rI += diffusionColor.red.toFloat() / 255f
-            gI += diffusionColor.green.toFloat() / 255f
-            bI += diffusionColor.blue.toFloat() / 255f
+            rI += diffusionColor.red.toFloat() / 255f * optics.diffusion.x
+            gI += diffusionColor.green.toFloat() / 255f * optics.diffusion.y
+            bI += diffusionColor.blue.toFloat() / 255f * optics.diffusion.z
 
-            if (i != intersections.size - 1) {
-                val d = sqrt(prevPoint.squaredDistanceBetween(intersections[i].point))
+            if (i != reflections.size - 1) {
+                val d = sqrt(prevPoint.squaredDistanceBetween(reflections[i].point))
                 val att = if (i != 0) attenuation(d) else 1f
                 rI += optics.specularity.x * att * prevR
                 gI += optics.specularity.y * att * prevG
                 bI += optics.specularity.z * att * prevB
             }
-            prevPoint = intersections[i].point
+            prevPoint = reflections[i].point
             prevR = rI
             prevG = gI
             prevB = bI
@@ -143,11 +119,6 @@ class GlobalIlluminationRenderer(
         findReflections(reflected, result, currentDepth - 1)
     }
 
-    private fun rayAt(x: Int, y: Int): Ray {
-        val direction = ((upperLeft + down * (y * dy) + rightDirection * (x * dx)) - cameraPosition).normalized()
-        return Ray(cameraPosition, direction)
-    }
-
     private fun findAllIntersections(ray: Ray): List<Intersection> {
         val intersections = mutableListOf<Intersection>()
         for (primitive in primitives) {
@@ -160,7 +131,7 @@ class GlobalIlluminationRenderer(
         val intersections = findAllIntersections(ray)
         if (intersections.isEmpty()) return null
 
-        var minDistance = 1000000000f
+        var minDistance = Float.MAX_VALUE
         var result = intersections[0]
         for (intersection in intersections) {
             val sd = intersection.point.squaredDistanceBetween(ray.start)

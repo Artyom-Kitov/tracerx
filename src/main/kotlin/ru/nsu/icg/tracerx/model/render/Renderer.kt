@@ -1,6 +1,7 @@
 package ru.nsu.icg.tracerx.model.render
 
 import kotlinx.coroutines.*
+import ru.nsu.icg.tracerx.model.primitive.Ray
 import ru.nsu.icg.tracerx.model.scene.Render
 import ru.nsu.icg.tracerx.model.scene.Scene
 import java.awt.Dimension
@@ -76,8 +77,8 @@ abstract class Renderer(
         return batches
     }
 
-    protected val totalRendered = AtomicInteger(0)
-    protected val prevProgress = AtomicInteger(0)
+    private val totalRendered = AtomicInteger(0)
+    private val prevProgress = AtomicInteger(0)
 
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun render(): BufferedImage = coroutineScope {
@@ -97,6 +98,32 @@ abstract class Renderer(
         result
     }
 
-    abstract suspend fun renderBatch(batch: Batch, result: BufferedImage)
-}
+    private suspend fun renderBatch(batch: Batch, result: BufferedImage) = coroutineScope {
+        val pixels = screenDimension.width * screenDimension.height
+        for (y in batch.yFrom..<batch.yTo) {
+            for (x in batch.xFrom..<batch.xTo) {
+                yield()
 
+                val ray = rayAt(x, y)
+                val pixel = trace(ray)
+                synchronized(result) {
+                    result.setRGB(x, y, pixel)
+                }
+
+                val total = totalRendered.incrementAndGet()
+                val progress = (total.toFloat() / pixels * 100f).toInt()
+                if (progress > prevProgress.get()) {
+                    progressSetter(progress)
+                    prevProgress.set(progress)
+                }
+            }
+        }
+    }
+
+    private fun rayAt(x: Int, y: Int): Ray {
+        val direction = ((upperLeft + down * (y * dy) + rightDirection * (x * dx)) - cameraPosition).normalized()
+        return Ray(cameraPosition, direction)
+    }
+
+    abstract fun trace(ray: Ray): Int
+}
