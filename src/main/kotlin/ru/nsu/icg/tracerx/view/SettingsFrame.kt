@@ -19,7 +19,7 @@ class SettingsFrame(
 
     private val gammaSetter = ParameterPanel("gamma", 0.1f, 10f, 0.1f)
     private val depthSetter = ParameterPanel("depth", 1f, 10f, 1f)
-    private val parallelSetter = JCheckBox("Parallel rendering")
+    private val nThreadsSetter = ParameterPanel("Number of threads", 2f, 16f, 2f)
     private val sourceShownSetter = JCheckBox("Show light sources")
 
     init {
@@ -28,21 +28,20 @@ class SettingsFrame(
         preferredSize = DEFAULT_SIZE
 
         colorSetter.add(JLabel("background color"))
-        colorPanel.size = Dimension(50, 50)
+        colorPanel.size = Dimension(70, 70)
         colorSetter.add(colorPanel)
         colorPanel.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent?) {
                 picker.isVisible = true
             }
         })
-        picker.onChoose = {
-            colorPanel.background = it
-        }
+        picker.onChoose = { colorPanel.background = it }
+        sourceShownSetter.isSelected = true
 
         add(colorSetter)
         add(gammaSetter)
         add(depthSetter)
-        add(parallelSetter)
+        add(nThreadsSetter)
         add(sourceShownSetter)
 
         addWindowListener(object : WindowAdapter() {
@@ -50,7 +49,7 @@ class SettingsFrame(
                 picker.color = sceneController.backgroundColor
                 gammaSetter.parameterValue = sceneController.gamma
                 depthSetter.parameterValue = sceneController.depth.toFloat()
-                parallelSetter.isSelected = sceneController.parallel
+                nThreadsSetter.parameterValue = sceneController.nThreads.toFloat()
             }
         })
         val saveButton = JButton("Save")
@@ -60,7 +59,7 @@ class SettingsFrame(
             sceneController.gamma = gammaSetter.parameterValue
             sceneController.backgroundColor = colorPanel.background
             sceneController.depth = depthSetter.parameterValue.toInt()
-            sceneController.parallel = parallelSetter.isSelected
+            sceneController.nThreads = nThreadsSetter.parameterValue.toInt()
             lightSourcesShownConsumer(sourceShownSetter.isSelected)
 
             isVisible = false

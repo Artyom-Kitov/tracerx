@@ -5,7 +5,6 @@ import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.scene.LightSource
 import ru.nsu.icg.tracerx.model.scene.Render
 import ru.nsu.icg.tracerx.model.scene.Scene
-import java.awt.Color
 import java.awt.Dimension
 import java.awt.image.BufferedImage
 
@@ -18,7 +17,7 @@ class SceneController(
     val lightSources: List<LightSource> by context::projectedLightSources
     var gamma by context::gamma
     var depth by context::depth
-    var parallel by context::isParallel
+    var nThreads by context::nThreads
 
     fun setScene(scene: Scene) = context.setScene(scene)
     fun setRender(render: Render) = context.setRender(render)
@@ -31,9 +30,9 @@ class SceneController(
 
     fun rotate(aroundVertical: Float, aroundHorizontal: Float) = context.rotate(aroundVertical, aroundHorizontal)
 
-    fun init(screenDimension: Dimension) = context.setInitPosition(screenDimension)
+    fun init(screenDimension: Dimension) = context.setInitPosition()
 
-    fun startRender(screenDimension: Dimension, progressSetter: (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
+    suspend fun startRender(screenDimension: Dimension, progressSetter: suspend (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
         context.startRender(screenDimension, progressSetter, onDone)
     }
 

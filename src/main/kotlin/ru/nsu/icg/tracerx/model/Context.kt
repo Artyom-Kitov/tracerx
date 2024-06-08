@@ -3,6 +3,8 @@ package ru.nsu.icg.tracerx.model
 import ru.nsu.icg.tracerx.model.common.Matrix
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Primitive3D
+import ru.nsu.icg.tracerx.model.render.GlobalIlluminationRenderer
+import ru.nsu.icg.tracerx.model.render.Renderer
 import ru.nsu.icg.tracerx.model.scene.*
 import java.awt.Color
 import java.awt.Dimension
@@ -30,7 +32,7 @@ class Context {
 
     var depth = 4
     var gamma = 1f
-    var isParallel = true
+    var nThreads = Runtime.getRuntime().availableProcessors()
 
     private val lines: List<List<Vector3D>>
         get() {
@@ -161,7 +163,7 @@ class Context {
         }
     }
 
-    fun setInitPosition(screenDimension: Dimension) {
+    fun setInitPosition() {
         val first = primitives[0].lines[0][0]
         var (minX, minY, minZ) = first
         var (maxX, maxY, maxZ) = first
@@ -191,7 +193,7 @@ class Context {
         val render = Render(
             backgroundColor = backgroundColor,
             gamma = gamma,
-            renderDepth = 4,
+            renderDepth = depth,
             quality = RenderQuality.NORMAL,
             cameraPosition = cameraPosition.copy(w = 1f),
             observationPosition = center.copy(w = 1f),
@@ -199,29 +201,9 @@ class Context {
             zNear = delta / 2f,
             zFar = (max.x - center.x) + ((max.x - min.x) / 2f),
             screenWidth = 5f,
-            screenHeight = 5f
+            screenHeight = maxZ - minZ
         )
         setRender(render)
-    }
-
-    fun startRender(screenDimension: Dimension, progressSetter: (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
-        val tracer = Tracer(
-            primitives,
-            lightSources,
-            depth,
-            cameraPosition,
-            viewDirection,
-            screenDistance,
-            up, screenWidth,
-            screenHeight,
-            screenDimension,
-            gamma,
-            backgroundColor,
-            diffusionColor
-        )
-        tracer.progressSetter = progressSetter
-        val image = tracer.render(isParallel)
-        if (image != null) onDone(image)
     }
 
     fun buildRender(): Render {
@@ -238,5 +220,25 @@ class Context {
             screenWidth = screenWidth,
             screenHeight = screenHeight
         )
+    }
+
+    private fun buildScene(): Scene {
+        return Scene(
+            diffusionColor,
+            lightSources,
+            primitives
+        )
+    }
+
+    suspend fun startRender(screenDimension: Dimension, progressSetter: suspend (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
+        val renderer: Renderer = GlobalIlluminationRenderer(
+            buildScene(),
+            buildRender(),
+            screenDimension,
+            nThreads
+        )
+        renderer.progressSetter = progressSetter
+        val image = renderer.render()
+        onDone(image)
     }
 }

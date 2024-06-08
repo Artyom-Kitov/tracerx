@@ -162,13 +162,9 @@ class SceneFrame(
     }
 
     private fun render() {
-        isEnabled = false
         renderDialog.startRender {
-            sceneController.startRender(panel.size, renderDialog.progressSetter) {
+            sceneController.startRender(panel.size, renderDialog::progressSetter) {
                 panel.rendered = it
-                isEnabled = true
-                isVisible = true
-                renderDialog.isVisible = false
             }
         }
     }

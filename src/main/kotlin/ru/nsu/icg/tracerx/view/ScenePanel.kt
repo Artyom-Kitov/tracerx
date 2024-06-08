@@ -23,7 +23,7 @@ class ScenePanel(
     private var origin: Point = Point(0, 0)
     private var isMousePressed = false
 
-    var drawLightSources = false
+    var drawLightSources = true
         set(value) {
             field = value
             repaint()

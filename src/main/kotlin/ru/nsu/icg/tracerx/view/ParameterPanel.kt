@@ -1,16 +1,15 @@
 package ru.nsu.icg.tracerx.view
 
 import java.lang.NumberFormatException
+import java.util.*
 import javax.swing.*
 
 class ParameterPanel(
-    private val name: String,
+    name: String,
     private val min: Float,
     private val max: Float,
     private val step: Float
 ) : JPanel() {
-
-
 
     private val slider = JSlider(0, ((max - min) / step).toInt(), 0)
     private val textField = JTextField(10)
@@ -18,7 +17,7 @@ class ParameterPanel(
     var parameterValue
         set(value) {
             slider.value = ((value - min) / step).toInt()
-            textField.text = parameterValue.toString()
+            textField.text = formatFloat(parameterValue)
         }
         get() = min + slider.value * step
 
@@ -29,7 +28,7 @@ class ParameterPanel(
         slider.addChangeListener {
             val sliderValue = slider.value
             val value = min + sliderValue * step
-            textField.text = "%.1f".format(value)
+            textField.text = formatFloat(value)
         }
 
         textField.addActionListener {
@@ -49,5 +48,11 @@ class ParameterPanel(
         add(JLabel("$name: "))
         add(slider)
         add(textField)
+    }
+
+    companion object {
+        private fun formatFloat(f: Float): String {
+            return if (f - f.toInt() == 0f) f.toInt().toString() else "%.1f".format(Locale.ENGLISH, f)
+        }
     }
 }

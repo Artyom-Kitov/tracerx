@@ -1,5 +1,7 @@
 package ru.nsu.icg.tracerx.view
 
+import kotlinx.coroutines.*
+import kotlinx.coroutines.swing.Swing
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.WindowAdapter
@@ -12,17 +14,18 @@ import javax.swing.JProgressBar
 class RenderDialog(
     frame: JFrame,
     onClose: () -> Unit
-) : JDialog(frame, "Render Progress", false) {
+) : JDialog(frame, "Render Progress", true) {
 
     private val progressBar = JProgressBar(0, 100)
-    val progressSetter: (Int) -> Unit = {
-        progressBar.value = it
-        progressLabel.text = "$it%"
-        repaint()
+    suspend fun progressSetter(value: Int) {
+        withContext(Dispatchers.Swing) {
+            progressLabel.text = "$value%"
+            progressBar.value = value
+        }
     }
     private val progressLabel = JLabel("0%")
 
-    private var thread: Thread? = null
+    private var job: Job? = null
 
     init {
         defaultCloseOperation = DISPOSE_ON_CLOSE
@@ -36,10 +39,11 @@ class RenderDialog(
 
         addWindowListener(object : WindowAdapter() {
             override fun windowClosing(e: WindowEvent?) {
-                thread?.interrupt()
-                frame.isEnabled = true
-                frame.isVisible = true
+                job?.cancel()
                 onClose()
+                parent.isEnabled = true
+                parent.isVisible = true
+                isVisible = false
             }
         })
 
@@ -47,10 +51,18 @@ class RenderDialog(
         pack()
     }
 
-    fun startRender(action: () -> Unit) {
-        progressBar.value = 0
+    fun startRender(action: suspend () -> Unit) {
+        job = CoroutineScope(Dispatchers.Swing).launch {
+            progressBar.value = 0
+            parent.isEnabled = false
+            try {
+                action()
+            } finally {
+                parent.isEnabled = true
+                parent.isVisible = true
+                isVisible = false
+            }
+        }
         isVisible = true
-        thread = Thread(action)
-        thread?.start()
     }
 }
