@@ -1,6 +1,7 @@
 package ru.nsu.icg.tracerx.view
 
 import ru.nsu.icg.tracerx.controller.SceneController
+import ru.nsu.icg.tracerx.model.scene.RenderQuality
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
@@ -12,6 +13,7 @@ class SettingsFrame(
     private val sceneController: SceneController
 ) : JDialog(frame, "Settings", true) {
     private val rendererPopupList = RendererPopupList()
+    private val qualityPopupList = JComboBox<RenderQuality>(RenderQuality.entries.toTypedArray())
     private val colorSetter = JPanel()
     private val colorPanel = JPanel()
     private val picker = ColorPickerDialog(this)
@@ -41,6 +43,8 @@ class SettingsFrame(
 
         add(JLabel("Model"))
         add(rendererPopupList)
+        add(JLabel("Quality"))
+        add(qualityPopupList)
         add(colorSetter)
         add(gammaSetter)
         add(depthSetter)
@@ -50,6 +54,7 @@ class SettingsFrame(
         addWindowListener(object : WindowAdapter() {
             override fun windowOpened(e: WindowEvent?) {
                 picker.color = sceneController.backgroundColor
+                qualityPopupList.selectedItem = sceneController.quality
                 gammaSetter.parameterValue = sceneController.gamma
                 depthSetter.parameterValue = sceneController.depth.toFloat()
                 nThreadsSetter.parameterValue = sceneController.nThreads.toFloat()
@@ -66,6 +71,7 @@ class SettingsFrame(
             sceneController.nThreads = nThreadsSetter.parameterValue.toInt()
             lightSourcesShownConsumer(sourceShownSetter.isSelected)
             sceneController.rendererSupplier = rendererPopupList.selectedItem!!.toString() to rendererPopupList.supplier
+            sceneController.quality = qualityPopupList.selectedItem!! as RenderQuality
 
             isVisible = false
             parent.repaint()

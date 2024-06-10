@@ -1,18 +1,23 @@
 package ru.nsu.icg.tracerx.model.render
 
-import kotlinx.coroutines.*
 import ru.nsu.icg.tracerx.model.primitive.Ray
+import ru.nsu.icg.tracerx.model.scene.LightSource
 import ru.nsu.icg.tracerx.model.scene.Render
-import ru.nsu.icg.tracerx.model.scene.Scene
+import ru.nsu.icg.tracerx.model.structure.TracingStructure
+import java.awt.Color
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
 
 abstract class Renderer(
-    scene: Scene,
+    protected val structure: TracingStructure,
+    protected val lightSources: List<LightSource>,
+    protected val diffusionColor: Color,
     render: Render,
     protected val screenDimension: Dimension,
-    private val nThreads: Int
+    protected val nThreads: Int
 ) {
     private val viewDirection = (render.observationPosition - render.cameraPosition).normalized()
     protected val cameraPosition = render.cameraPosition
@@ -21,33 +26,30 @@ abstract class Renderer(
     protected val viewDistance = render.zFar
     private val screenWidth = render.screenWidth
     private val screenHeight = render.screenHeight
+    protected val quality = render.quality
 
-    protected val rightDirection = (viewDirection * up).normalized()
-    protected val down = up * -1f
+    private val rightDirection = (viewDirection * up).normalized()
+    private val down = up * -1f
     private val screenCenter = cameraPosition + viewDirection * screenDistance
-    protected val upperLeft = screenCenter + (up * (screenHeight / 2f)) - (rightDirection * (screenWidth / 2))
+    private val upperLeft = screenCenter + (up * (screenHeight / 2f)) - (rightDirection * (screenWidth / 2))
 
-    protected val dx = screenWidth / screenDimension.width
-    protected val dy = screenHeight / screenDimension.height
+    private val dx = screenWidth / screenDimension.width
+    private val dy = screenHeight / screenDimension.height
 
     protected val depth = render.renderDepth
-    protected val diffusionColor = scene.diffusionColor
     protected val backgroundColor = render.backgroundColor
-    protected val gamma = render.gamma
-
-    protected val lightSources = scene.lightSources
-    protected val primitives = scene.primitives
+    private val gamma = render.gamma
 
     var progressSetter: suspend (Int) -> Unit = {}
 
-    data class Batch(
+    protected data class Batch(
         val xFrom: Int,
         val yFrom: Int,
         val xTo: Int,
         val yTo: Int
     )
 
-    private fun findBatches(): List<Batch> {
+    protected fun findBatches(): List<Batch> {
         if (nThreads == 1) return listOf(Batch(0, 0, screenDimension.width, screenDimension.height))
 
         val batches = mutableListOf<Batch>()
@@ -77,53 +79,41 @@ abstract class Renderer(
         return batches
     }
 
-    private val totalRendered = AtomicInteger(0)
-    private val prevProgress = AtomicInteger(0)
+    abstract suspend fun render(): BufferedImage
 
-    @OptIn(DelicateCoroutinesApi::class)
-    suspend fun render(): BufferedImage = coroutineScope {
-        totalRendered.set(0)
-
-        val threadPool = newFixedThreadPoolContext(nThreads, "renderer")
-        val batches = findBatches()
-        val result = BufferedImage(screenDimension.width, screenDimension.height, BufferedImage.TYPE_INT_RGB)
-        val tasks = List(batches.size) { index ->
-            launch(threadPool) {
-                renderBatch(batches[index], result)
-            }
-        }
-        tasks.joinAll()
-
-        progressSetter(0)
-        result
-    }
-
-    private suspend fun renderBatch(batch: Batch, result: BufferedImage) = coroutineScope {
-        val pixels = screenDimension.width * screenDimension.height
-        for (y in batch.yFrom..<batch.yTo) {
-            for (x in batch.xFrom..<batch.xTo) {
-                yield()
-
-                val ray = rayAt(x, y)
-                val pixel = trace(ray)
-                synchronized(result) {
-                    result.setRGB(x, y, pixel)
-                }
-
-                val total = totalRendered.incrementAndGet()
-                val progress = (total.toFloat() / pixels * 100f).toInt()
-                if (progress > prevProgress.get()) {
-                    progressSetter(progress)
-                    prevProgress.set(progress)
-                }
-            }
-        }
-    }
-
-    private fun rayAt(x: Int, y: Int): Ray {
-        val direction = ((upperLeft + down * (y * dy) + rightDirection * (x * dx)) - cameraPosition).normalized()
+    protected fun rayAt(x: Int, y: Int): Ray {
+        val direction = ((upperLeft + down * (y * dy + dy / 2f) + rightDirection * (x * dx + dx / 2f)) - cameraPosition)
+            .normalized()
         return Ray(cameraPosition, direction)
     }
 
-    abstract fun trace(ray: Ray): Int
+    // for FINE quality
+    protected fun raysAt(x: Int, y: Int): List<Ray> {
+        val result = mutableListOf<Ray>()
+        for (i in 0..1) {
+            for (j in 0..1) {
+                result.add(
+                    Ray(cameraPosition,
+                        ((upperLeft + down * (y * dy + dy * j) + rightDirection * (x * dx + dx * i)) - cameraPosition)
+                        .normalized()
+                    )
+                )
+            }
+        }
+        return result
+    }
+
+    protected data class Intensity(
+        var r: Float = 0f,
+        var g: Float = 0f,
+        var b: Float = 0f
+    )
+
+    protected fun gammaCorrection(intensity: Intensity): Int {
+        val gammaReversed = 1f / gamma
+        val red = max(0, min(255, (intensity.r.pow(gammaReversed) * 255f).toInt()))
+        val green = max(0, min(255, (intensity.g.pow(gammaReversed) * 255f).toInt()))
+        val blue = max(0, min(255, (intensity.b.pow(gammaReversed) * 255f).toInt()))
+        return (red shl 16) or (green shl 8) or blue
+    }
 }

@@ -6,14 +6,20 @@ import ru.nsu.icg.tracerx.model.primitive.Primitive3D
 import ru.nsu.icg.tracerx.model.render.GlobalIlluminationRenderer
 import ru.nsu.icg.tracerx.model.render.Renderer
 import ru.nsu.icg.tracerx.model.scene.*
+import ru.nsu.icg.tracerx.model.structure.OcTree
+import ru.nsu.icg.tracerx.model.structure.PrimitivesList
+import ru.nsu.icg.tracerx.model.structure.TracingStructure
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.image.BufferedImage
 import kotlin.math.*
 
+typealias RendererSupplier = Pair<String, (TracingStructure, List<LightSource>, Color, Render, Dimension, Int) -> Renderer>
+
 class Context {
     private val lightSources: MutableList<LightSource> = mutableListOf()
     private val primitives: MutableList<Primitive3D> = mutableListOf()
+    private var tracingStructure: TracingStructure = PrimitivesList(primitives)
 
     private var cameraPosition = Vector3D(0f, 0f, 0f, 1f) // eye
     private var viewDirection = Vector3D(0f, 0f, 0f)
@@ -32,9 +38,10 @@ class Context {
 
     var depth = 4
     var gamma = 1f
+    var quality = RenderQuality.NORMAL
     var nThreads = Runtime.getRuntime().availableProcessors()
 
-    var rendererSupplier: Pair<String, (Scene, Render, Dimension, Int) -> Renderer> =
+    var rendererSupplier: RendererSupplier =
         "Global illumination" to ::GlobalIlluminationRenderer
 
     private val lines: List<List<Vector3D>>
@@ -50,12 +57,15 @@ class Context {
         primitives.clear()
         lightSources.addAll(scene.lightSources)
         primitives.addAll(scene.primitives)
+
+        tracingStructure = OcTree.buildFrom(primitives, 5)
     }
 
     fun setRender(render: Render) {
         backgroundColor = render.backgroundColor
         gamma = render.gamma
         depth = render.renderDepth
+        quality = render.quality
 
         cameraPosition = render.cameraPosition
         viewDirection = (render.observationPosition - render.cameraPosition).normalized()
@@ -167,25 +177,7 @@ class Context {
     }
 
     fun setInitPosition() {
-        val first = primitives[0].lines[0][0]
-        var (minX, minY, minZ) = first
-        var (maxX, maxY, maxZ) = first
-        for (primitive in primitives) {
-            for (line in primitive.lines) {
-                for (point in line) {
-                    if (point.x > maxX) maxX = point.x
-                    if (point.x < minX) minX = point.x
-
-                    if (point.y > maxY) maxY = point.y
-                    if (point.y < minY) minY = point.y
-
-                    if (point.z > maxZ) maxZ = point.z
-                    if (point.z < minZ) minZ = point.z
-                }
-            }
-        }
-        var min = Vector3D(minX, minY, minZ)
-        var max = Vector3D(maxX, maxY, maxZ)
+        var (min, max) = primitives.findBoundingBox()
         val center = (min + max) / 2f
         min = center + ((min - center) * 1.05f)
         max = center + ((max - center) * 1.05f)
@@ -204,7 +196,7 @@ class Context {
             zNear = delta / 2f,
             zFar = (max.x - center.x) + ((max.x - min.x) / 2f),
             screenWidth = 5f,
-            screenHeight = maxZ - minZ
+            screenHeight = max.z - min.z
         )
         setRender(render)
     }
@@ -214,7 +206,7 @@ class Context {
             backgroundColor = backgroundColor,
             gamma = gamma,
             renderDepth = depth,
-            quality = RenderQuality.NORMAL,
+            quality = quality,
             cameraPosition = cameraPosition,
             observationPosition = (cameraPosition + viewDirection * screenDistance),
             up = up,
@@ -225,16 +217,10 @@ class Context {
         )
     }
 
-    private fun buildScene(): Scene {
-        return Scene(
-            diffusionColor,
-            lightSources,
-            primitives
-        )
-    }
-
     suspend fun startRender(screenDimension: Dimension, progressSetter: suspend (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
-        val renderer: Renderer = rendererSupplier.second(buildScene(), buildRender(), screenDimension, nThreads)
+        val renderer: Renderer = rendererSupplier.second(
+            tracingStructure, lightSources, diffusionColor, buildRender(), screenDimension, nThreads
+        )
         renderer.progressSetter = progressSetter
         val image = renderer.render()
         onDone(image)

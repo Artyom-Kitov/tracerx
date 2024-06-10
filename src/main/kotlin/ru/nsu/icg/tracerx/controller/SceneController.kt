@@ -19,6 +19,7 @@ class SceneController(
     var depth by context::depth
     var nThreads by context::nThreads
     var rendererSupplier by context::rendererSupplier
+    var quality by context::quality
 
     fun setScene(scene: Scene) = context.setScene(scene)
     fun setRender(render: Render) = context.setRender(render)

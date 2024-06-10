@@ -12,8 +12,8 @@ data class Quadrangle(
     override val lines: List<List<Vector3D>>
         get() = listOf(listOf(a, b, c, d, a))
 
-    private val triangle1 = Triangle(a, b, c, optics)
-    private val triangle2 = Triangle(a, c, d, optics)
+    val triangle1 = Triangle(a, b, c, optics)
+    val triangle2 = Triangle(a, c, d, optics)
 
     override fun intersects(ray: Ray): Boolean {
         return triangle1.intersects(ray) || triangle2.intersects(ray)

@@ -14,7 +14,7 @@ data class Triangle(
 
     private val edge1 = b - a
     private val edge2 = c - a
-    private val normal = (edge1 * edge2).normalized()
+    val normal = (edge1 * edge2).normalized()
 
     override fun intersects(ray: Ray): Boolean {
         val h = ray.direction * edge2

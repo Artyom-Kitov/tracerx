@@ -1,33 +1,132 @@
 package ru.nsu.icg.tracerx.model.render
 
+import kotlinx.coroutines.*
 import ru.nsu.icg.tracerx.model.common.Vector3D
 import ru.nsu.icg.tracerx.model.primitive.Intersection
 import ru.nsu.icg.tracerx.model.primitive.Ray
 import ru.nsu.icg.tracerx.model.scene.LightSource
 import ru.nsu.icg.tracerx.model.scene.Render
-import ru.nsu.icg.tracerx.model.scene.Scene
+import ru.nsu.icg.tracerx.model.scene.RenderQuality
+import ru.nsu.icg.tracerx.model.structure.TracingStructure
+import java.awt.Color
 import java.awt.Dimension
-import kotlin.math.max
-import kotlin.math.min
+import java.awt.image.BufferedImage
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 class GlobalIlluminationRenderer(
-    scene: Scene,
+    structure: TracingStructure,
+    lightSources: List<LightSource>,
+    diffusionColor: Color,
     render: Render,
     screenDimension: Dimension,
     nThreads: Int
-) : Renderer(scene, render, screenDimension, nThreads) {
+) : Renderer(structure, lightSources, diffusionColor, render, screenDimension, nThreads) {
 
-    override fun trace(ray: Ray): Int {
+    private val totalRendered = AtomicInteger(0)
+    private val prevProgress = AtomicInteger(0)
+
+    @OptIn(DelicateCoroutinesApi::class)
+    override suspend fun render(): BufferedImage = coroutineScope {
+        totalRendered.set(0)
+
+        val threadPool = newFixedThreadPoolContext(nThreads, "renderer")
+        val batches = findBatches()
+        val result = BufferedImage(screenDimension.width, screenDimension.height, BufferedImage.TYPE_INT_RGB)
+        val tasks = List(batches.size) { index ->
+            launch(threadPool) {
+                renderBatch(batches[index], result)
+            }
+        }
+        tasks.joinAll()
+
+        progressSetter(0)
+        result
+    }
+
+    private suspend fun renderBatch(batch: Batch, result: BufferedImage) = coroutineScope {
+        val nPixels = screenDimension.width * screenDimension.height
+        val s = if (quality == RenderQuality.ROUGH) 2 else 1
+        for (y in batch.yFrom..<batch.yTo step s) {
+            for (x in batch.xFrom..<batch.xTo step s) {
+                yield()
+
+                traceWithQuality(x, y, result)
+
+                val total = if (quality == RenderQuality.ROUGH)
+                    totalRendered.addAndGet(4)
+                else
+                    totalRendered.incrementAndGet()
+                val progress = (total.toFloat() / nPixels * 100f).toInt()
+                if (progress > prevProgress.get()) {
+                    progressSetter(progress)
+                    prevProgress.set(progress)
+                }
+            }
+        }
+    }
+
+    private fun traceWithQuality(x: Int, y: Int, result: BufferedImage) {
+        when (quality) {
+            RenderQuality.FINE -> {
+                val pixels = raysAt(x, y).map { trace(it) }
+                var midR = 0f
+                var midG = 0f
+                var midB = 0f
+                for (p in pixels) {
+                    midR += p.r
+                    midG += p.g
+                    midB += p.b
+                }
+                midR /= pixels.size
+                midG /= pixels.size
+                midB /= pixels.size
+                val intensity = Intensity(midR, midG, midB)
+                synchronized(result) {
+                    result.setRGB(x, y, gammaCorrection(intensity))
+                }
+            }
+            RenderQuality.NORMAL -> {
+                val ray = rayAt(x, y)
+                val intensity = trace(ray)
+                synchronized(result) {
+                    result.setRGB(x, y, gammaCorrection(intensity))
+                }
+            }
+            RenderQuality.ROUGH -> {
+                val ray = rayAt(x, y)
+                val intensity = trace(ray)
+                val corrected = gammaCorrection(intensity)
+                synchronized(result) {
+                    result.setRGB(x, y, corrected)
+                    if (x + 1 < result.width)
+                        result.setRGB(x + 1, y, corrected)
+                    if (y + 1 < result.height)
+                        result.setRGB(x, y + 1, corrected)
+                    if (x + 1 < result.width && y + 1 < result.height)
+                    result.setRGB(x + 1, y + 1, corrected)
+                }
+            }
+        }
+    }
+
+    private fun trace(ray: Ray): Intensity {
         val reflections = mutableListOf<Intersection>()
         findReflections(ray, reflections, depth)
-        if (reflections.isEmpty()) return backgroundColor.rgb
+        if (reflections.isEmpty()) return Intensity(
+            backgroundColor.red / 255f,
+            backgroundColor.green / 255f,
+            backgroundColor.blue / 255f
+        )
 
         var prevPoint = reflections.last().point
-        var prevR = diffusionColor.red.toFloat() / 255f
-        var prevG = diffusionColor.green.toFloat() / 255f
-        var prevB = diffusionColor.blue.toFloat() / 255f
+
+        val intensity = Intensity(
+            r = diffusionColor.red.toFloat() / 255f,
+            g = diffusionColor.green.toFloat() / 255f,
+            b = diffusionColor.blue.toFloat() / 255f
+        )
         for (i in reflections.size - 1 downTo 0) {
             val optics = reflections[i].primitive.optics
 
@@ -42,29 +141,21 @@ class GlobalIlluminationRenderer(
 
             if (i != reflections.size - 1) {
                 val d = sqrt(prevPoint.squaredDistanceBetween(reflections[i].point))
-                val att = if (i != 0) attenuation(d) else 1f
-                rI += optics.specularity.x * att * prevR
-                gI += optics.specularity.y * att * prevG
-                bI += optics.specularity.z * att * prevB
+                val att = attenuation(d)
+                rI += optics.specularity.x * att * intensity.r
+                gI += optics.specularity.y * att * intensity.g
+                bI += optics.specularity.z * att * intensity.b
             }
             prevPoint = reflections[i].point
-            prevR = rI
-            prevG = gI
-            prevB = bI
+            intensity.r = rI
+            intensity.g = gI
+            intensity.b = bI
         }
-
-        val gammaReversed = 1f / gamma
-        val red = max(0, min(255, (prevR.pow(gammaReversed) * 255f).toInt()))
-        val green = max(0, min(255, (prevG.pow(gammaReversed) * 255f).toInt()))
-        val blue = max(0, min(255, (prevB.pow(gammaReversed) * 255f).toInt()))
-
-        return (red shl 16) or (green shl 8) or blue
+        return intensity
     }
 
-    private fun findSourcesIntensities(v: Vector3D, intersection: Intersection): Triple<Float, Float, Float> {
-        var rI = 0f
-        var gI = 0f
-        var bI = 0f
+    private fun findSourcesIntensities(v: Vector3D, intersection: Intersection): Intensity {
+        val result = Intensity()
 
         for (i in lightSources.indices) {
             val source = lightSources[i]
@@ -82,13 +173,12 @@ class GlobalIlluminationRenderer(
                 val ib = globalLightIntensity(source.color.blue, att, optics.diffusion.z, optics.specularity.z,
                     intersection.normal, direction, r.direction, v, optics.specularityPower)
 
-                rI += ir
-                gI += ig
-                bI += ib
+                result.r += ir
+                result.g += ig
+                result.b += ib
             }
         }
-
-        return Triple(rI, gI, bI)
+        return result
     }
 
     private fun globalLightIntensity(i: Int, att: Float, kd: Float, ks: Float,
@@ -103,43 +193,15 @@ class GlobalIlluminationRenderer(
     private fun sourceDirection(source: LightSource, point: Vector3D): Vector3D? {
         val direction = (source.position - point).normalized()
         val ray = Ray(point, direction)
-        for (primitive in primitives) {
-            if (primitive.intersects(ray)) {
-                return null
-            }
-        }
+        if (structure.hasIntersection(ray)) return null
         return ray.direction
     }
 
     private fun findReflections(ray: Ray, result: MutableList<Intersection>, currentDepth: Int) {
         if (currentDepth <= 0) return
-        val intersection = findClosestIntersection(ray) ?: return
+        val intersection = structure.findClosestIntersection(ray) ?: return
         result.add(intersection)
         val reflected = intersection.reflect(ray)
         findReflections(reflected, result, currentDepth - 1)
-    }
-
-    private fun findAllIntersections(ray: Ray): List<Intersection> {
-        val intersections = mutableListOf<Intersection>()
-        for (primitive in primitives) {
-            intersections.addAll(primitive.intersectionWith(ray))
-        }
-        return intersections
-    }
-
-    private fun findClosestIntersection(ray: Ray): Intersection? {
-        val intersections = findAllIntersections(ray)
-        if (intersections.isEmpty()) return null
-
-        var minDistance = Float.MAX_VALUE
-        var result = intersections[0]
-        for (intersection in intersections) {
-            val sd = intersection.point.squaredDistanceBetween(ray.start)
-            if (sd < minDistance) {
-                minDistance = sd
-                result = intersection
-            }
-        }
-        return result
     }
 }
