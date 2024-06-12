@@ -56,6 +56,8 @@ class SceneFrame(
                     KeyEvent.VK_DOWN, KeyEvent.VK_N -> sceneController.move(0f, 0f, -sensitivity)
                     KeyEvent.VK_W -> sceneController.move(sensitivity, 0f, 0f)
                     KeyEvent.VK_S -> sceneController.move(-sensitivity, 0f, 0f)
+                    KeyEvent.VK_Q -> sceneController.rotate(0f, 0f, -0.05f)
+                    KeyEvent.VK_E -> sceneController.rotate(0f, 0f, 0.05f)
                     KeyEvent.VK_ENTER -> renderButton.doClick()
                     KeyEvent.VK_BACK_SPACE -> wireButton.doClick()
                 }
@@ -95,7 +97,7 @@ class SceneFrame(
                 views.removeAllItems()
                 renders.clear()
                 if (fullScene.second.isEmpty()) {
-                    sceneController.init(panel.size)
+                    sceneController.init()
                     panel.correctSize()
                 } else {
                     sceneController.setRender(fullScene.second[0].second)
@@ -146,13 +148,17 @@ class SceneFrame(
 
         val init = JMenuItem("Init")
         init.addActionListener {
-            sceneController.init(panel.size)
+            sceneController.init()
             panel.correctSize()
             repaint()
         }
         menu.add(init)
 
         renderButton.addActionListener { render() }
+
+        val help = JMenuItem("Help")
+        help.addActionListener { HelpFrame.isVisible = true }
+        menu.add(help)
 
         val exit = JMenuItem("Exit")
         exit.addActionListener { exitProcess(0) }

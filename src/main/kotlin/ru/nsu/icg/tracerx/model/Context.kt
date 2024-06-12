@@ -90,10 +90,15 @@ class Context {
         var viewVector = viewDirection
 
         val alpha = acos(up.z)
-        var rotationMatrix = rotationAroundVector((up * Vector3D(0f, 0f, 1f)).normalized(), alpha)
+        var rotationMatrix = if (alpha == 0f)
+            Matrix.eye(4)
+        else
+            rotationAroundVector((up * Vector3D(0f, 0f, 1f)).normalized(), alpha)
         viewVector = rotationMatrix * viewVector
+
         val beta = acos(viewVector.x)
-        rotationMatrix = rotationAroundVector((viewVector * Vector3D(1f, 0f, 0f)).normalized(), beta) * rotationMatrix
+        if (beta != 0f)
+            rotationMatrix = rotationAroundVector((viewVector * Vector3D(1f, 0f, 0f)).normalized(), beta) * rotationMatrix
 
         resultingMatrix = rotationMatrix * resultingMatrix
 
@@ -157,14 +162,17 @@ class Context {
         cameraPosition += movement
     }
 
-    fun rotate(aroundVertical: Float, aroundHorizontal: Float) {
-        if (aroundVertical != 0f) {
-            viewDirection = rotationAroundVector(up, aroundVertical) * viewDirection
+    fun rotate(yaw: Float, pitch: Float, roll: Float) {
+        if (roll != 0f) {
+            up = rotationAroundVector(viewDirection, roll) * up
         }
-        if (aroundHorizontal != 0f) {
-            val rotation = rotationAroundVector(rightDirection, aroundHorizontal)
+        if (pitch != 0f) {
+            val rotation = rotationAroundVector(rightDirection, pitch)
             up = rotation * up
             viewDirection = rotation * viewDirection
+        }
+        if (yaw != 0f) {
+            viewDirection = rotationAroundVector(up, yaw) * viewDirection
         }
     }
 

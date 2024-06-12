@@ -49,6 +49,7 @@ class RenderDialog(
                 parent.isEnabled = true
                 parent.isVisible = true
                 isVisible = false
+                parent.requestFocus()
             }
         })
 

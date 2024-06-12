@@ -30,9 +30,9 @@ class SceneController(
 
     fun zoom(isNegative: Boolean) = context.zoom(isNegative)
 
-    fun rotate(aroundVertical: Float, aroundHorizontal: Float) = context.rotate(aroundVertical, aroundHorizontal)
+    fun rotate(yaw: Float, pitch: Float, roll: Float) = context.rotate(yaw, pitch, roll)
 
-    fun init(screenDimension: Dimension) = context.setInitPosition()
+    fun init() = context.setInitPosition()
 
     suspend fun startRender(screenDimension: Dimension, progressSetter: suspend (Int) -> Unit, onDone: (BufferedImage) -> Unit) {
         context.startRender(screenDimension, progressSetter, onDone)

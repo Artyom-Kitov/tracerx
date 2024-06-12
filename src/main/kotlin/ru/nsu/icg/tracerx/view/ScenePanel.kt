@@ -83,7 +83,7 @@ class ScenePanel(
             override fun mouseDragged(e: MouseEvent?) {
                 if (e == null) return
                 val sensitivity = 0.1f / scaleFactor
-                controller.rotate((origin.x - e.x) * sensitivity, (origin.y - e.y) * sensitivity)
+                controller.rotate((origin.x - e.x) * sensitivity, (origin.y - e.y) * sensitivity, 0f)
                 origin = e.point
                 repaint()
             }
